@@ -1,9 +1,6 @@
 ﻿import { db, getLessonById, getModuleById, getOrderedLessons, getUserById, hasUserLessonAccess, userProgressMap } from './dataStore.js';
 import { nextId } from '../utils/id.js';
-
-function normalize(value) {
-  return String(value || '').trim().toLowerCase();
-}
+import { localizedTextForLanguage, toLocalizedQuestion } from '../utils/i18n.js';
 
 export function lessonAccessibleForUser(userId, _lessonId) {
   const user = getUserById(userId);
@@ -54,10 +51,12 @@ export function submitLessonTest({ userId, lessonId, answers }) {
     throw error;
   }
 
-  const map = new Map((answers || []).map((a) => [Number(a.questionId), normalize(a.answer)]));
+  const map = new Map((answers || []).map((a) => [Number(a.questionId), Number(a.selectedOptionIndex)]));
   const total = lesson.test.length;
   const correct = lesson.test.reduce((sum, question) => {
-    return sum + (map.get(question.id) === normalize(question.correctAnswer) ? 1 : 0);
+    const normalizedQuestion = toLocalizedQuestion(question, { includeCorrectOptionIndex: true });
+    const submittedOptionIndex = map.get(question.id);
+    return sum + (submittedOptionIndex === Number(normalizedQuestion.correctOptionIndex) ? 1 : 0);
   }, 0);
 
   const score = total ? Math.round((correct / total) * 100) : 0;
@@ -86,7 +85,7 @@ export function submitLessonTest({ userId, lessonId, answers }) {
   };
 }
 
-export function buildProgressOverview(userId) {
+export function buildProgressOverview(userId, lang = 'ru') {
   const progress = userProgressMap(userId);
   const user = getUserById(userId);
   const hasAccess = user?.role === 'admin' ? true : hasUserLessonAccess(userId);
@@ -111,7 +110,7 @@ export function buildProgressOverview(userId) {
 
       return {
         moduleId: module.id,
-        title: module.title,
+        title: localizedTextForLanguage(module.title, lang),
         completedLessons: done,
         totalLessons: moduleLessons.length,
         percent: moduleLessons.length ? Math.round((done / moduleLessons.length) * 100) : 0

@@ -10,6 +10,7 @@ import practiceRoutes from './routes/practices.routes.js';
 import progressRoutes from './routes/progress.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import { errorHandler, notFound } from './middleware/errors.js';
+import { attachRequestLanguage } from './middleware/language.js';
 import swaggerSpec from './docs/swagger.js';
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(attachRequestLanguage);
 
 /**
  * @swagger

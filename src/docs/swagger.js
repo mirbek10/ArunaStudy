@@ -54,6 +54,14 @@ const options = {
             user: { $ref: '#/components/schemas/UserPublic' }
           }
         },
+        LocalizedText: {
+          type: 'object',
+          required: ['ru', 'ky'],
+          properties: {
+            ru: { type: 'string', example: 'Заголовок' },
+            ky: { type: 'string', example: 'Аталышы' }
+          }
+        },
         Module: {
           type: 'object',
           properties: {
@@ -78,7 +86,13 @@ const options = {
           properties: {
             id: { type: 'integer', example: 501 },
             question: { type: 'string', example: 'Main HTML heading tag?' },
-            correctAnswer: { type: 'string', example: 'h1' }
+            options: {
+              type: 'array',
+              items: { type: 'string' },
+              minItems: 4,
+              example: ['h1', 'h2', 'title', 'head']
+            },
+            correctOptionIndex: { type: 'integer', example: 0 }
           }
         },
         Lesson: {

@@ -6,6 +6,7 @@ import { validateBody } from '../middleware/validate.js';
 import { lessonCreateSchema, lessonUpdateSchema, testSubmitSchema } from '../utils/schemas.js';
 import { nextId } from '../utils/id.js';
 import { lessonAccessibleForUser, lessonUnlockedForUser, submitLessonTest } from '../services/lmsService.js';
+import { toLessonForLanguage, toQuestionForLanguage } from '../utils/i18n.js';
 
 const router = Router();
 const DEFAULT_VIDEO_URL = 'https://www.youtube.com/watch?v=qz0aGYrrlhU';
@@ -47,10 +48,14 @@ router.get('/:lessonId/test', requireAuth, (req, res, next) => {
     lessonId: lesson.id,
     unlocked,
     passingScore: lesson.passingScore || 80,
-    questions: lesson.test.map((q) => ({
-      id: q.id,
-      question: q.question
-    }))
+    questions: lesson.test.map((q) => {
+      const localizedQuestion = toQuestionForLanguage(q, req.lang, { includeCorrectOptionIndex: false });
+      return {
+        id: localizedQuestion.id,
+        question: localizedQuestion.question,
+        options: localizedQuestion.options
+      };
+    })
   });
 });
 
@@ -76,10 +81,13 @@ router.get('/:lessonId', requireAuth, (req, res, next) => {
   }
 
   const unlocked = lessonUnlockedForUser(req.user.id, lesson.id);
+  const includeCorrectOptionIndex = req.user.role === 'admin';
+  const localizedLesson = toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex });
+
   return res.json({
     lesson: {
-      ...lesson,
-      videoUrl: lesson.videoUrl || DEFAULT_VIDEO_URL,
+      ...localizedLesson,
+      videoUrl: localizedLesson.videoUrl || DEFAULT_VIDEO_URL,
       unlocked
     }
   });
@@ -110,11 +118,13 @@ router.post('/', requireAuth, allowRoles('admin'), validateBody(lessonCreateSche
     videoUrl: req.body.videoUrl || DEFAULT_VIDEO_URL,
     order: req.body.order,
     passingScore: req.body.passingScore,
-    test: req.body.test.map((q) => ({ id: nextId(), ...q }))
+    test: req.body.test.map((q) => ({ ...q, id: nextId() }))
   };
 
   db.lessons.push(lesson);
-  return res.status(201).json({ lesson });
+  return res.status(201).json({
+    lesson: toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: true })
+  });
 });
 
 /**
@@ -149,7 +159,9 @@ router.patch('/:lessonId', requireAuth, allowRoles('admin'), validateBody(lesson
   }
 
   Object.assign(lesson, patch);
-  return res.json({ lesson });
+  return res.json({
+    lesson: toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: true })
+  });
 });
 
 /**

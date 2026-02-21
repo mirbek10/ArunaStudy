@@ -16,11 +16,9 @@
  *             additionalProperties: false
  *             properties:
  *               title:
- *                 type: string
- *                 example: React
+ *                 $ref: '#/components/schemas/LocalizedText'
  *               description:
- *                 type: string
- *                 example: Компоненты, state, props
+ *                 $ref: '#/components/schemas/LocalizedText'
  *               order:
  *                 type: integer
  *                 example: 4

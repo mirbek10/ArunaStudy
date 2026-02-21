@@ -5,6 +5,7 @@ import { allowRoles } from '../middleware/roles.js';
 import { validateBody } from '../middleware/validate.js';
 import { practiceReviewSchema, practiceSubmitSchema } from '../utils/schemas.js';
 import { createPracticeSubmission, reviewPracticeSubmission } from '../services/lmsService.js';
+import { toLessonForLanguage } from '../utils/i18n.js';
 
 const router = Router();
 
@@ -47,10 +48,12 @@ router.get('/submissions', requireAuth, allowRoles('admin'), (req, res) => {
     .filter((row) => (status ? row.status === status : true))
     .map((row) => {
       const student = db.users.find((u) => u.id === row.studentId);
+      const lesson = db.lessons.find((l) => l.id === row.lessonId) || null;
+
       return {
         ...row,
         student: student ? publicUser(student) : null,
-        lesson: db.lessons.find((l) => l.id === row.lessonId) || null
+        lesson: lesson ? toLessonForLanguage(lesson, req.lang, { includeTest: true }) : null
       };
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -89,4 +92,3 @@ router.patch(
 );
 
 export default router;
-

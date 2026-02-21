@@ -19,11 +19,9 @@
  *                 type: integer
  *                 example: 11
  *               title:
- *                 type: string
- *                 example: HTML Structure
+ *                 $ref: '#/components/schemas/LocalizedText'
  *               content:
- *                 type: string
- *                 example: Build semantic page structure.
+ *                 $ref: '#/components/schemas/LocalizedText'
  *               videoUrl:
  *                 type: string
  *                 example: https://www.youtube.com/watch?v=qz0aGYrrlhU
@@ -38,12 +36,18 @@
  *                 items:
  *                   type: object
  *                   additionalProperties: false
- *                   required: [question, correctAnswer]
+ *                   required: [question, options, correctOptionIndex]
  *                   properties:
  *                     question:
- *                       type: string
- *                     correctAnswer:
- *                       type: string
+ *                       $ref: '#/components/schemas/LocalizedText'
+ *                     options:
+ *                       type: array
+ *                       minItems: 4
+ *                       items:
+ *                         $ref: '#/components/schemas/LocalizedText'
+ *                     correctOptionIndex:
+ *                       type: integer
+ *                       example: 0
  *     responses:
  *       201:
  *         description: Урок создан

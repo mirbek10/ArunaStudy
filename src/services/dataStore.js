@@ -2,7 +2,12 @@
 import { hashPassword } from '../utils/password.js';
 
 function makeQuestion(question, correctAnswer) {
-  return { id: nextId(), question, correctAnswer };
+  return {
+    id: nextId(),
+    question,
+    options: [correctAnswer, 'Option 2', 'Option 3', 'Option 4'],
+    correctOptionIndex: 0
+  };
 }
 
 export const db = {

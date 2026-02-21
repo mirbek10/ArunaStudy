@@ -1,5 +1,10 @@
 ﻿import { z } from 'zod';
 
+const localizedTextSchema = z.object({
+  ru: z.string().min(1),
+  ky: z.string().min(1)
+});
+
 export const registerSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
@@ -12,8 +17,8 @@ export const loginSchema = z.object({
 });
 
 export const moduleCreateSchema = z.object({
-  title: z.string().min(2),
-  description: z.string().min(5),
+  title: localizedTextSchema,
+  description: localizedTextSchema,
   order: z.number().int().min(1)
 });
 
@@ -22,15 +27,21 @@ export const moduleUpdateSchema = moduleCreateSchema.partial().refine(
   'At least one field is required'
 );
 
-const testQuestionSchema = z.object({
-  question: z.string().min(3),
-  correctAnswer: z.string().min(1)
-});
+const testQuestionSchema = z
+  .object({
+    id: z.number().int().min(1).optional(),
+    question: localizedTextSchema,
+    options: z.array(localizedTextSchema).min(4),
+    correctOptionIndex: z.number().int().min(0)
+  })
+  .refine((value) => value.correctOptionIndex < value.options.length, {
+    message: 'correctOptionIndex must point to an existing option'
+  });
 
 export const lessonCreateSchema = z.object({
   moduleId: z.number().int().min(1),
-  title: z.string().min(2),
-  content: z.string().min(10),
+  title: localizedTextSchema,
+  content: localizedTextSchema,
   videoUrl: z.string().url().optional(),
   order: z.number().int().min(1),
   passingScore: z.number().int().min(0).max(100).default(80),
@@ -46,7 +57,7 @@ export const testSubmitSchema = z.object({
   answers: z.array(
     z.object({
       questionId: z.number().int().min(1),
-      answer: z.string().min(1)
+      selectedOptionIndex: z.number().int().min(0)
     })
   )
 });

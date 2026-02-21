@@ -6,6 +6,7 @@ import { validateBody } from '../middleware/validate.js';
 import { moduleCreateSchema, moduleUpdateSchema } from '../utils/schemas.js';
 import { nextId } from '../utils/id.js';
 import { lessonAccessibleForUser } from '../services/lmsService.js';
+import { toLessonForLanguage, toModuleForLanguage } from '../utils/i18n.js';
 
 const router = Router();
 const DEFAULT_VIDEO_URL = 'https://www.youtube.com/watch?v=qz0aGYrrlhU';
@@ -18,22 +19,12 @@ function visibleLessonsForUser(user, lessons) {
   return lessons.filter((lesson) => lessonAccessibleForUser(user.id, lesson.id));
 }
 
-function serializeLesson(lesson, { includeTest = false } = {}) {
-  const payload = {
-    id: lesson.id,
-    moduleId: lesson.moduleId,
-    title: lesson.title,
-    content: lesson.content,
-    videoUrl: lesson.videoUrl || DEFAULT_VIDEO_URL,
-    order: lesson.order,
-    passingScore: lesson.passingScore
+function serializeLesson(lesson, lang, { includeTest = false, includeCorrectOptionIndex = false } = {}) {
+  const normalized = toLessonForLanguage(lesson, lang, { includeTest, includeCorrectOptionIndex });
+  return {
+    ...normalized,
+    videoUrl: normalized.videoUrl || DEFAULT_VIDEO_URL
   };
-
-  if (includeTest) {
-    payload.test = lesson.test;
-  }
-
-  return payload;
 }
 
 /**
@@ -56,18 +47,20 @@ function serializeLesson(lesson, { includeTest = false } = {}) {
  */
 router.get('/', requireAuth, (req, res) => {
   const withLessons = req.query.withLessons === '1';
+  const lang = req.lang;
   const modules = [...db.modules]
     .sort((a, b) => a.order - b.order)
     .map((module) => {
-      if (!withLessons) return module;
+      const localizedModule = toModuleForLanguage(module, lang);
+      if (!withLessons) return localizedModule;
 
       const lessons = db.lessons
         .filter((lesson) => lesson.moduleId === module.id)
         .sort((a, b) => a.order - b.order);
 
       return {
-        ...module,
-        lessons: visibleLessonsForUser(req.user, lessons).map((lesson) => serializeLesson(lesson))
+        ...localizedModule,
+        lessons: visibleLessonsForUser(req.user, lessons).map((lesson) => serializeLesson(lesson, lang))
       };
     });
 
@@ -104,7 +97,7 @@ router.get('/', requireAuth, (req, res) => {
 router.post('/', requireAuth, allowRoles('admin'), validateBody(moduleCreateSchema), (req, res) => {
   const moduleRow = { id: nextId(), ...req.body };
   db.modules.push(moduleRow);
-  res.status(201).json({ module: moduleRow });
+  res.status(201).json({ module: toModuleForLanguage(moduleRow, req.lang) });
 });
 
 /**
@@ -136,7 +129,7 @@ router.patch('/:moduleId', requireAuth, allowRoles('admin'), validateBody(module
   }
 
   Object.assign(moduleRow, req.body);
-  return res.json({ module: moduleRow });
+  return res.json({ module: toModuleForLanguage(moduleRow, req.lang) });
 });
 
 /**
@@ -202,7 +195,9 @@ router.get('/:moduleId/lessons', requireAuth, (req, res, next) => {
     .sort((a, b) => a.order - b.order);
 
   return res.json({
-    lessons: visibleLessonsForUser(req.user, lessons).map((lesson) => serializeLesson(lesson, { includeTest: true }))
+    lessons: visibleLessonsForUser(req.user, lessons).map((lesson) =>
+      serializeLesson(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: req.user.role === 'admin' })
+    )
   });
 });
 

@@ -24,9 +24,9 @@
  *               moduleId:
  *                 type: integer
  *               title:
- *                 type: string
+ *                 $ref: '#/components/schemas/LocalizedText'
  *               content:
- *                 type: string
+ *                 $ref: '#/components/schemas/LocalizedText'
  *               videoUrl:
  *                 type: string
  *               order:
@@ -37,6 +37,20 @@
  *                 type: array
  *                 items:
  *                   type: object
+ *                   additionalProperties: false
+ *                   required: [question, options, correctOptionIndex]
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     question:
+ *                       $ref: '#/components/schemas/LocalizedText'
+ *                     options:
+ *                       type: array
+ *                       minItems: 4
+ *                       items:
+ *                         $ref: '#/components/schemas/LocalizedText'
+ *                     correctOptionIndex:
+ *                       type: integer
  *     responses:
  *       200:
  *         description: Урок обновлен

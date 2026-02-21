@@ -22,9 +22,9 @@
  *             additionalProperties: false
  *             properties:
  *               title:
- *                 type: string
+ *                 $ref: '#/components/schemas/LocalizedText'
  *               description:
- *                 type: string
+ *                 $ref: '#/components/schemas/LocalizedText'
  *               order:
  *                 type: integer
  *     responses:

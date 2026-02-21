@@ -15,7 +15,7 @@ const router = Router();
  *       - bearerAuth: []
  */
 router.get('/overview', requireAuth, (req, res) => {
-  const payload = buildProgressOverview(req.user.id);
+  const payload = buildProgressOverview(req.user.id, req.lang);
   res.json(payload);
 });
 

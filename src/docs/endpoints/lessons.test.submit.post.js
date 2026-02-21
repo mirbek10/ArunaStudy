@@ -26,15 +26,15 @@
  *                 type: array
  *                 items:
  *                   type: object
- *                   required: [questionId, answer]
+ *                   required: [questionId, selectedOptionIndex]
  *                   additionalProperties: false
  *                   properties:
  *                     questionId:
  *                       type: integer
  *                       example: 501
- *                     answer:
- *                       type: string
- *                       example: h1
+ *                     selectedOptionIndex:
+ *                       type: integer
+ *                       example: 2
  *     responses:
  *       200:
  *         description: Результат теста
