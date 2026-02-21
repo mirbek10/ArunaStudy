@@ -5,10 +5,21 @@ import { allowRoles } from '../middleware/roles.js';
 import { validateBody } from '../middleware/validate.js';
 import { lessonCreateSchema, lessonUpdateSchema, testSubmitSchema } from '../utils/schemas.js';
 import { nextId } from '../utils/id.js';
-import { lessonUnlockedForUser, submitLessonTest } from '../services/lmsService.js';
+import { lessonAccessibleForUser, lessonUnlockedForUser, submitLessonTest } from '../services/lmsService.js';
 
 const router = Router();
 const DEFAULT_VIDEO_URL = 'https://www.youtube.com/watch?v=qz0aGYrrlhU';
+
+function ensureLessonAccess(req, lessonId, next) {
+  if (lessonAccessibleForUser(req.user.id, lessonId)) {
+    return true;
+  }
+
+  const err = new Error('No access to this lesson');
+  err.status = 403;
+  next(err);
+  return false;
+}
 
 /**
  * @swagger
@@ -25,6 +36,10 @@ router.get('/:lessonId/test', requireAuth, (req, res, next) => {
     const err = new Error('Lesson not found');
     err.status = 404;
     return next(err);
+  }
+
+  if (!ensureLessonAccess(req, lesson.id, next)) {
+    return;
   }
 
   const unlocked = lessonUnlockedForUser(req.user.id, lesson.id);
@@ -54,6 +69,10 @@ router.get('/:lessonId', requireAuth, (req, res, next) => {
     const err = new Error('Lesson not found');
     err.status = 404;
     return next(err);
+  }
+
+  if (!ensureLessonAccess(req, lesson.id, next)) {
+    return;
   }
 
   const unlocked = lessonUnlockedForUser(req.user.id, lesson.id);
@@ -179,4 +198,3 @@ router.post('/:lessonId/test/submit', requireAuth, allowRoles('student', 'admin'
 });
 
 export default router;
-

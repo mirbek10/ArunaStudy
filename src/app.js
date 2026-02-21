@@ -13,10 +13,11 @@ import { errorHandler, notFound } from './middleware/errors.js';
 import swaggerSpec from './docs/swagger.js';
 
 const app = express();
+const allowedOrigins = [env.CLIENT_URL, 'https://project-aruna-study.vercel.app'];
 
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    origin: allowedOrigins,
     credentials: true
   })
 );
@@ -53,4 +54,3 @@ app.use(notFound);
 app.use(errorHandler);
 
 export default app;
-

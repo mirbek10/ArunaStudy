@@ -1,9 +1,18 @@
 ﻿import { Router } from 'express';
 import { db, getModuleById } from '../services/dataStore.js';
 import { requireAuth } from '../middleware/auth.js';
+import { lessonAccessibleForUser } from '../services/lmsService.js';
 
 const router = Router();
 const DEFAULT_VIDEO_URL = 'https://www.youtube.com/watch?v=qz0aGYrrlhU';
+
+function visibleLessonsForUser(user, lessons) {
+  if (user.role === 'admin') {
+    return lessons;
+  }
+
+  return lessons.filter((lesson) => lessonAccessibleForUser(user.id, lesson.id));
+}
 
 router.get('/', requireAuth, (_req, res) => {
   const sections = [...db.modules]
@@ -29,17 +38,7 @@ router.get('/:sectionId/lessons', requireAuth, (req, res, next) => {
 
   const lessons = db.lessons
     .filter((lesson) => lesson.moduleId === section.id)
-    .sort((a, b) => a.order - b.order)
-    .map((lesson) => ({
-      id: lesson.id,
-      moduleId: lesson.moduleId,
-      title: lesson.title,
-      content: lesson.content,
-      videoUrl: lesson.videoUrl || DEFAULT_VIDEO_URL,
-      order: lesson.order,
-      passingScore: lesson.passingScore,
-      test: lesson.test.map((q) => ({ id: q.id, question: q.question }))
-    }));
+    .sort((a, b) => a.order - b.order);
 
   return res.json({
     section: {
@@ -48,7 +47,16 @@ router.get('/:sectionId/lessons', requireAuth, (req, res, next) => {
       description: section.description,
       order: section.order
     },
-    lessons
+    lessons: visibleLessonsForUser(req.user, lessons).map((lesson) => ({
+      id: lesson.id,
+      moduleId: lesson.moduleId,
+      title: lesson.title,
+      content: lesson.content,
+      videoUrl: lesson.videoUrl || DEFAULT_VIDEO_URL,
+      order: lesson.order,
+      passingScore: lesson.passingScore,
+      test: lesson.test.map((q) => ({ id: q.id, question: q.question }))
+    }))
   });
 });
 

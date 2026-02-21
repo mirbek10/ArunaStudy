@@ -5,9 +5,36 @@ import { allowRoles } from '../middleware/roles.js';
 import { validateBody } from '../middleware/validate.js';
 import { moduleCreateSchema, moduleUpdateSchema } from '../utils/schemas.js';
 import { nextId } from '../utils/id.js';
+import { lessonAccessibleForUser } from '../services/lmsService.js';
 
 const router = Router();
 const DEFAULT_VIDEO_URL = 'https://www.youtube.com/watch?v=qz0aGYrrlhU';
+
+function visibleLessonsForUser(user, lessons) {
+  if (user.role === 'admin') {
+    return lessons;
+  }
+
+  return lessons.filter((lesson) => lessonAccessibleForUser(user.id, lesson.id));
+}
+
+function serializeLesson(lesson, { includeTest = false } = {}) {
+  const payload = {
+    id: lesson.id,
+    moduleId: lesson.moduleId,
+    title: lesson.title,
+    content: lesson.content,
+    videoUrl: lesson.videoUrl || DEFAULT_VIDEO_URL,
+    order: lesson.order,
+    passingScore: lesson.passingScore
+  };
+
+  if (includeTest) {
+    payload.test = lesson.test;
+  }
+
+  return payload;
+}
 
 /**
  * @swagger
@@ -34,20 +61,13 @@ router.get('/', requireAuth, (req, res) => {
     .map((module) => {
       if (!withLessons) return module;
 
+      const lessons = db.lessons
+        .filter((lesson) => lesson.moduleId === module.id)
+        .sort((a, b) => a.order - b.order);
+
       return {
         ...module,
-        lessons: db.lessons
-          .filter((lesson) => lesson.moduleId === module.id)
-          .sort((a, b) => a.order - b.order)
-          .map((lesson) => ({
-            id: lesson.id,
-            moduleId: lesson.moduleId,
-            title: lesson.title,
-            content: lesson.content,
-            videoUrl: lesson.videoUrl || DEFAULT_VIDEO_URL,
-            order: lesson.order,
-            passingScore: lesson.passingScore
-          }))
+        lessons: visibleLessonsForUser(req.user, lessons).map((lesson) => serializeLesson(lesson))
       };
     });
 
@@ -179,20 +199,11 @@ router.get('/:moduleId/lessons', requireAuth, (req, res, next) => {
 
   const lessons = db.lessons
     .filter((lesson) => lesson.moduleId === moduleRow.id)
-    .sort((a, b) => a.order - b.order)
-    .map((lesson) => ({
-      id: lesson.id,
-      moduleId: lesson.moduleId,
-      title: lesson.title,
-      content: lesson.content,
-      videoUrl: lesson.videoUrl || DEFAULT_VIDEO_URL,
-      order: lesson.order,
-      passingScore: lesson.passingScore,
-      test: lesson.test
-    }));
+    .sort((a, b) => a.order - b.order);
 
-  return res.json({ lessons });
+  return res.json({
+    lessons: visibleLessonsForUser(req.user, lessons).map((lesson) => serializeLesson(lesson, { includeTest: true }))
+  });
 });
 
 export default router;
-

@@ -1,11 +1,28 @@
-﻿import { db, getLessonById, getModuleById, getOrderedLessons, userProgressMap } from './dataStore.js';
+﻿import { db, getLessonById, getModuleById, getOrderedLessons, getUserById, hasUserLessonAccess, userProgressMap } from './dataStore.js';
 import { nextId } from '../utils/id.js';
 
 function normalize(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+export function lessonAccessibleForUser(userId, _lessonId) {
+  const user = getUserById(userId);
+  if (!user) {
+    return false;
+  }
+
+  if (user.role === 'admin') {
+    return true;
+  }
+
+  return hasUserLessonAccess(user.id);
+}
+
 export function lessonUnlockedForUser(userId, lessonId) {
+  if (!lessonAccessibleForUser(userId, lessonId)) {
+    return false;
+  }
+
   const orderedLessons = getOrderedLessons();
   const idx = orderedLessons.findIndex((l) => l.id === Number(lessonId));
   if (idx <= 0) return true;
@@ -22,6 +39,12 @@ export function submitLessonTest({ userId, lessonId, answers }) {
   if (!lesson) {
     const error = new Error('Lesson not found');
     error.status = 404;
+    throw error;
+  }
+
+  if (!lessonAccessibleForUser(userId, lesson.id)) {
+    const error = new Error('No access to this lesson');
+    error.status = 403;
     throw error;
   }
 
@@ -65,7 +88,9 @@ export function submitLessonTest({ userId, lessonId, answers }) {
 
 export function buildProgressOverview(userId) {
   const progress = userProgressMap(userId);
-  const lessons = getOrderedLessons();
+  const user = getUserById(userId);
+  const hasAccess = user?.role === 'admin' ? true : hasUserLessonAccess(userId);
+  const lessons = hasAccess ? getOrderedLessons() : [];
 
   const completedLessons = lessons.filter((lesson) => {
     const row = progress[String(lesson.id)];
@@ -78,7 +103,7 @@ export function buildProgressOverview(userId) {
   const moduleProgress = db.modules
     .sort((a, b) => a.order - b.order)
     .map((module) => {
-      const moduleLessons = db.lessons.filter((l) => l.moduleId === module.id);
+      const moduleLessons = hasAccess ? db.lessons.filter((l) => l.moduleId === module.id) : [];
       const done = moduleLessons.filter((lesson) => {
         const row = progress[String(lesson.id)];
         return Number(row?.testScore || 0) >= (lesson.passingScore || 80);
@@ -107,6 +132,12 @@ export function createPracticeSubmission({ studentId, lessonId, answerUrl, answe
   if (!lesson) {
     const error = new Error('Lesson not found');
     error.status = 404;
+    throw error;
+  }
+
+  if (!lessonAccessibleForUser(studentId, lesson.id)) {
+    const error = new Error('No access to this lesson');
+    error.status = 403;
     throw error;
   }
 

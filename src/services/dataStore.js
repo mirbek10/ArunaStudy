@@ -173,9 +173,16 @@ export const db = {
       test: [makeQuestion('Main goal of demo?', 'show value'), makeQuestion('Performance score tool?', 'lighthouse')]
     }
   ],
+  lessonAccessByUserId: {},
   progressByUserId: {},
   practiceSubmissions: []
 };
+
+for (const user of db.users) {
+  if (user.role === 'student') {
+    db.lessonAccessByUserId[String(user.id)] = false;
+  }
+}
 
 export function publicUser(user) {
   return {
@@ -190,6 +197,27 @@ export function findUserByEmail(email) {
   return db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
 }
 
+export function getUserById(userId) {
+  return db.users.find((u) => u.id === Number(userId));
+}
+
+export function hasUserLessonAccess(userId) {
+  const key = String(userId);
+  if (typeof db.lessonAccessByUserId[key] !== 'boolean') {
+    if (Array.isArray(db.lessonAccessByUserId[key])) {
+      db.lessonAccessByUserId[key] = db.lessonAccessByUserId[key].length > 0;
+    } else {
+      db.lessonAccessByUserId[key] = false;
+    }
+  }
+  return db.lessonAccessByUserId[key];
+}
+
+export function setUserLessonAccess(userId, hasAccess) {
+  db.lessonAccessByUserId[String(userId)] = Boolean(hasAccess);
+  return db.lessonAccessByUserId[String(userId)];
+}
+
 export function addUser({ name, email, passwordHash, role }) {
   const user = {
     id: nextId(),
@@ -199,6 +227,9 @@ export function addUser({ name, email, passwordHash, role }) {
     role
   };
   db.users.push(user);
+  if (user.role === 'student') {
+    db.lessonAccessByUserId[String(user.id)] = false;
+  }
   return user;
 }
 

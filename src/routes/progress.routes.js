@@ -1,6 +1,6 @@
 ﻿import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { buildProgressOverview, lessonUnlockedForUser } from '../services/lmsService.js';
+import { buildProgressOverview, lessonAccessibleForUser, lessonUnlockedForUser } from '../services/lmsService.js';
 import { getLessonById, userProgressMap } from '../services/dataStore.js';
 
 const router = Router();
@@ -37,6 +37,12 @@ router.get('/lessons/:lessonId', requireAuth, (req, res, next) => {
     return next(err);
   }
 
+  if (!lessonAccessibleForUser(req.user.id, lessonId)) {
+    const err = new Error('No access to this lesson');
+    err.status = 403;
+    return next(err);
+  }
+
   const progress = userProgressMap(req.user.id)[String(lessonId)] || null;
   const unlocked = lessonUnlockedForUser(req.user.id, lessonId);
 
@@ -49,5 +55,3 @@ router.get('/lessons/:lessonId', requireAuth, (req, res, next) => {
 });
 
 export default router;
-
-

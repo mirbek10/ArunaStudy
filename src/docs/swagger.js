@@ -20,7 +20,8 @@ const options = {
       { name: 'Student-Practices', description: 'Запросы студента по практикам' },
       { name: 'Admin-Practices', description: 'Запросы админа по практикам' },
       { name: 'Student-Progress', description: 'Запросы студента по прогрессу' },
-      { name: 'Admin-Dashboard', description: 'Метрики админ-панели' }
+      { name: 'Admin-Dashboard', description: 'Метрики админ-панели' },
+      { name: 'Admin-Users', description: 'Запросы админа по пользователям и доступам к урокам' }
     ],
     components: {
       securitySchemes: {

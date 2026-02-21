@@ -65,3 +65,7 @@ export const practiceReviewSchema = z.object({
   status: z.enum(['approved', 'rejected']),
   feedback: z.string().min(2)
 });
+
+export const lessonAccessUpdateSchema = z.object({
+  hasLessonsAccess: z.boolean()
+});

@@ -85,7 +85,7 @@ router.post('/login', validateBody(loginSchema), (req, res, next) => {
 
   if (!user || !comparePassword(password, user.passwordHash)) {
     const err = new Error('Invalid email or password');
-    err.status = 401;
+    err.status = 404;
     return next(err);
   }
 
