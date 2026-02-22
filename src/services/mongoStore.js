@@ -265,7 +265,9 @@ export async function initMongoStore() {
   }
 
   initPromise = (async () => {
-    client = new MongoClient(env.MONGODB_URI);
+    client = new MongoClient(env.MONGODB_URI, {
+      serverSelectionTimeoutMS: env.MONGODB_SERVER_SELECTION_TIMEOUT_MS
+    });
     await client.connect();
 
     const db = client.db(env.MONGODB_DB_NAME);
@@ -306,7 +308,21 @@ export async function initMongoStore() {
     }
 
     await persistMongoStore();
-  })();
+  })().catch(async (error) => {
+    collections = null;
+    initPromise = null;
+
+    if (client) {
+      try {
+        await client.close();
+      } catch {
+        // no-op
+      }
+      client = null;
+    }
+
+    throw error;
+  });
 
   return initPromise;
 }

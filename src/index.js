@@ -1,9 +1,12 @@
-﻿import app from './app.js';
+import app from './app.js';
 import { env } from './config/env.js';
 import { initMongoStore } from './services/mongoStore.js';
 
+let mongoConnected = false;
+let mongoRetryTimer = null;
+
 function startServer(port, maxAttempts = 10) {
-  const server = app.listen(port, () => {
+  const server = app.listen(port, '0.0.0.0', () => {
     console.log(`arunastudy server running on http://localhost:${port}`);
     console.log(`Swagger UI: http://localhost:${port}/api/docs`);
     console.log(`OpenAPI JSON: http://localhost:${port}/api/docs.json`);
@@ -22,16 +25,27 @@ function startServer(port, maxAttempts = 10) {
   });
 }
 
-async function bootstrap() {
+async function connectMongoInBackground() {
   try {
     await initMongoStore();
-    startServer(env.PORT);
+
+    if (!mongoConnected) {
+      mongoConnected = true;
+      console.log('MongoDB подключена');
+    }
   } catch (error) {
-    console.error('Не удалось инициализировать хранилище MongoDB');
+    mongoConnected = false;
+    console.error('Не удалось подключиться к MongoDB. Сервер продолжит работу в памяти.');
     console.error(error);
-    process.exit(1);
+
+    clearTimeout(mongoRetryTimer);
+    mongoRetryTimer = setTimeout(connectMongoInBackground, env.MONGODB_RETRY_DELAY_MS);
   }
 }
 
-bootstrap();
+function bootstrap() {
+  startServer(env.PORT);
+  connectMongoInBackground();
+}
 
+bootstrap();
