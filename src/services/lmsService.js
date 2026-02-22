@@ -34,19 +34,19 @@ export function lessonUnlockedForUser(userId, lessonId) {
 export function submitLessonTest({ userId, lessonId, answers }) {
   const lesson = getLessonById(lessonId);
   if (!lesson) {
-    const error = new Error('Lesson not found');
+    const error = new Error('Урок не найден');
     error.status = 404;
     throw error;
   }
 
   if (!lessonAccessibleForUser(userId, lesson.id)) {
-    const error = new Error('No access to this lesson');
+    const error = new Error('Нет доступа к этому уроку');
     error.status = 403;
     throw error;
   }
 
   if (!lessonUnlockedForUser(userId, lesson.id)) {
-    const error = new Error('Lesson is locked. Complete previous lesson with at least 80%.');
+    const error = new Error('Урок заблокирован. Сначала завершите предыдущий урок минимум на 80%.');
     error.status = 423;
     throw error;
   }
@@ -129,13 +129,13 @@ export function buildProgressOverview(userId, lang = 'ru') {
 export function createPracticeSubmission({ studentId, lessonId, answerUrl, answerText }) {
   const lesson = getLessonById(lessonId);
   if (!lesson) {
-    const error = new Error('Lesson not found');
+    const error = new Error('Урок не найден');
     error.status = 404;
     throw error;
   }
 
   if (!lessonAccessibleForUser(studentId, lesson.id)) {
-    const error = new Error('No access to this lesson');
+    const error = new Error('Нет доступа к этому уроку');
     error.status = 403;
     throw error;
   }
@@ -160,7 +160,7 @@ export function createPracticeSubmission({ studentId, lessonId, answerUrl, answe
 export function reviewPracticeSubmission({ submissionId, reviewerId, status, feedback }) {
   const row = db.practiceSubmissions.find((s) => s.id === Number(submissionId));
   if (!row) {
-    const error = new Error('Submission not found');
+    const error = new Error('Отправка не найдена');
     error.status = 404;
     throw error;
   }
@@ -175,7 +175,7 @@ export function reviewPracticeSubmission({ submissionId, reviewerId, status, fee
 
 export function lessonsByModule(moduleId) {
   if (!getModuleById(moduleId)) {
-    const error = new Error('Module not found');
+    const error = new Error('Модуль не найден');
     error.status = 404;
     throw error;
   }
@@ -184,3 +184,4 @@ export function lessonsByModule(moduleId) {
     .filter((lesson) => lesson.moduleId === Number(moduleId))
     .sort((a, b) => a.order - b.order);
 }
+

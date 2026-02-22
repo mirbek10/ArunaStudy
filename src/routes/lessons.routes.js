@@ -7,6 +7,7 @@ import { lessonCreateSchema, lessonUpdateSchema, testSubmitSchema } from '../uti
 import { nextId } from '../utils/id.js';
 import { lessonAccessibleForUser, lessonUnlockedForUser, submitLessonTest } from '../services/lmsService.js';
 import { toLessonForLanguage, toQuestionForLanguage } from '../utils/i18n.js';
+import { persistMongoStore } from '../services/mongoStore.js';
 
 const router = Router();
 const DEFAULT_VIDEO_URL = 'https://www.youtube.com/watch?v=qz0aGYrrlhU';
@@ -16,7 +17,7 @@ function ensureLessonAccess(req, lessonId, next) {
     return true;
   }
 
-  const err = new Error('No access to this lesson');
+  const err = new Error('Нет доступа к этому уроку');
   err.status = 403;
   next(err);
   return false;
@@ -34,7 +35,7 @@ function ensureLessonAccess(req, lessonId, next) {
 router.get('/:lessonId/test', requireAuth, (req, res, next) => {
   const lesson = getLessonById(req.params.lessonId);
   if (!lesson) {
-    const err = new Error('Lesson not found');
+    const err = new Error('Урок не найден');
     err.status = 404;
     return next(err);
   }
@@ -71,7 +72,7 @@ router.get('/:lessonId/test', requireAuth, (req, res, next) => {
 router.get('/:lessonId', requireAuth, (req, res, next) => {
   const lesson = getLessonById(req.params.lessonId);
   if (!lesson) {
-    const err = new Error('Lesson not found');
+    const err = new Error('Урок не найден');
     err.status = 404;
     return next(err);
   }
@@ -102,29 +103,35 @@ router.get('/:lessonId', requireAuth, (req, res, next) => {
  *     security:
  *       - bearerAuth: []
  */
-router.post('/', requireAuth, allowRoles('admin'), validateBody(lessonCreateSchema), (req, res, next) => {
-  const moduleRow = getModuleById(req.body.moduleId);
-  if (!moduleRow) {
-    const err = new Error('Module not found');
-    err.status = 404;
+router.post('/', requireAuth, allowRoles('admin'), validateBody(lessonCreateSchema), async (req, res, next) => {
+  try {
+    const moduleRow = getModuleById(req.body.moduleId);
+    if (!moduleRow) {
+      const err = new Error('Модуль не найден');
+      err.status = 404;
+      return next(err);
+    }
+
+    const lesson = {
+      id: nextId(),
+      moduleId: req.body.moduleId,
+      title: req.body.title,
+      content: req.body.content,
+      videoUrl: req.body.videoUrl || DEFAULT_VIDEO_URL,
+      order: req.body.order,
+      passingScore: req.body.passingScore,
+      test: req.body.test.map((q) => ({ ...q, id: nextId() }))
+    };
+
+    db.lessons.push(lesson);
+    await persistMongoStore();
+
+    return res.status(201).json({
+      lesson: toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: true })
+    });
+  } catch (err) {
     return next(err);
   }
-
-  const lesson = {
-    id: nextId(),
-    moduleId: req.body.moduleId,
-    title: req.body.title,
-    content: req.body.content,
-    videoUrl: req.body.videoUrl || DEFAULT_VIDEO_URL,
-    order: req.body.order,
-    passingScore: req.body.passingScore,
-    test: req.body.test.map((q) => ({ ...q, id: nextId() }))
-  };
-
-  db.lessons.push(lesson);
-  return res.status(201).json({
-    lesson: toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: true })
-  });
 });
 
 /**
@@ -136,32 +143,38 @@ router.post('/', requireAuth, allowRoles('admin'), validateBody(lessonCreateSche
  *     security:
  *       - bearerAuth: []
  */
-router.patch('/:lessonId', requireAuth, allowRoles('admin'), validateBody(lessonUpdateSchema), (req, res, next) => {
-  const lesson = getLessonById(req.params.lessonId);
-  if (!lesson) {
-    const err = new Error('Lesson not found');
-    err.status = 404;
+router.patch('/:lessonId', requireAuth, allowRoles('admin'), validateBody(lessonUpdateSchema), async (req, res, next) => {
+  try {
+    const lesson = getLessonById(req.params.lessonId);
+    if (!lesson) {
+      const err = new Error('Урок не найден');
+      err.status = 404;
+      return next(err);
+    }
+
+    if (req.body.moduleId && !getModuleById(req.body.moduleId)) {
+      const err = new Error('Модуль не найден');
+      err.status = 404;
+      return next(err);
+    }
+
+    const patch = { ...req.body };
+    if (patch.videoUrl === '') {
+      patch.videoUrl = DEFAULT_VIDEO_URL;
+    }
+    if (patch.test) {
+      patch.test = patch.test.map((q) => ({ id: q.id || nextId(), ...q }));
+    }
+
+    Object.assign(lesson, patch);
+    await persistMongoStore();
+
+    return res.json({
+      lesson: toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: true })
+    });
+  } catch (err) {
     return next(err);
   }
-
-  if (req.body.moduleId && !getModuleById(req.body.moduleId)) {
-    const err = new Error('Module not found');
-    err.status = 404;
-    return next(err);
-  }
-
-  const patch = { ...req.body };
-  if (patch.videoUrl === '') {
-    patch.videoUrl = DEFAULT_VIDEO_URL;
-  }
-  if (patch.test) {
-    patch.test = patch.test.map((q) => ({ id: q.id || nextId(), ...q }));
-  }
-
-  Object.assign(lesson, patch);
-  return res.json({
-    lesson: toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: true })
-  });
 });
 
 /**
@@ -173,17 +186,22 @@ router.patch('/:lessonId', requireAuth, allowRoles('admin'), validateBody(lesson
  *     security:
  *       - bearerAuth: []
  */
-router.delete('/:lessonId', requireAuth, allowRoles('admin'), (req, res, next) => {
-  const id = Number(req.params.lessonId);
-  const index = db.lessons.findIndex((l) => l.id === id);
-  if (index === -1) {
-    const err = new Error('Lesson not found');
-    err.status = 404;
+router.delete('/:lessonId', requireAuth, allowRoles('admin'), async (req, res, next) => {
+  try {
+    const id = Number(req.params.lessonId);
+    const index = db.lessons.findIndex((l) => l.id === id);
+    if (index === -1) {
+      const err = new Error('Урок не найден');
+      err.status = 404;
+      return next(err);
+    }
+
+    db.lessons.splice(index, 1);
+    await persistMongoStore();
+    return res.status(204).send();
+  } catch (err) {
     return next(err);
   }
-
-  db.lessons.splice(index, 1);
-  return res.status(204).send();
 });
 
 /**
@@ -195,7 +213,7 @@ router.delete('/:lessonId', requireAuth, allowRoles('admin'), (req, res, next) =
  *     security:
  *       - bearerAuth: []
  */
-router.post('/:lessonId/test/submit', requireAuth, allowRoles('student', 'admin'), validateBody(testSubmitSchema), (req, res, next) => {
+router.post('/:lessonId/test/submit', requireAuth, allowRoles('student', 'admin'), validateBody(testSubmitSchema), async (req, res, next) => {
   try {
     const result = submitLessonTest({
       userId: req.user.id,
@@ -203,6 +221,7 @@ router.post('/:lessonId/test/submit', requireAuth, allowRoles('student', 'admin'
       answers: req.body.answers
     });
 
+    await persistMongoStore();
     return res.json(result);
   } catch (err) {
     return next(err);
@@ -210,3 +229,4 @@ router.post('/:lessonId/test/submit', requireAuth, allowRoles('student', 'admin'
 });
 
 export default router;
+

@@ -7,6 +7,7 @@ import { moduleCreateSchema, moduleUpdateSchema } from '../utils/schemas.js';
 import { nextId } from '../utils/id.js';
 import { lessonAccessibleForUser } from '../services/lmsService.js';
 import { toLessonForLanguage, toModuleForLanguage } from '../utils/i18n.js';
+import { persistMongoStore } from '../services/mongoStore.js';
 
 const router = Router();
 const DEFAULT_VIDEO_URL = 'https://www.youtube.com/watch?v=qz0aGYrrlhU';
@@ -94,10 +95,15 @@ router.get('/', requireAuth, (req, res) => {
  *       201:
  *         description: Module created
  */
-router.post('/', requireAuth, allowRoles('admin'), validateBody(moduleCreateSchema), (req, res) => {
-  const moduleRow = { id: nextId(), ...req.body };
-  db.modules.push(moduleRow);
-  res.status(201).json({ module: toModuleForLanguage(moduleRow, req.lang) });
+router.post('/', requireAuth, allowRoles('admin'), validateBody(moduleCreateSchema), async (req, res, next) => {
+  try {
+    const moduleRow = { id: nextId(), ...req.body };
+    db.modules.push(moduleRow);
+    await persistMongoStore();
+    res.status(201).json({ module: toModuleForLanguage(moduleRow, req.lang) });
+  } catch (err) {
+    return next(err);
+  }
 });
 
 /**
@@ -118,18 +124,23 @@ router.post('/', requireAuth, allowRoles('admin'), validateBody(moduleCreateSche
  *       200:
  *         description: Module updated
  *       404:
- *         description: Module not found
+ *         description: Модуль не найден
  */
-router.patch('/:moduleId', requireAuth, allowRoles('admin'), validateBody(moduleUpdateSchema), (req, res, next) => {
-  const moduleRow = getModuleById(req.params.moduleId);
-  if (!moduleRow) {
-    const err = new Error('Module not found');
-    err.status = 404;
+router.patch('/:moduleId', requireAuth, allowRoles('admin'), validateBody(moduleUpdateSchema), async (req, res, next) => {
+  try {
+    const moduleRow = getModuleById(req.params.moduleId);
+    if (!moduleRow) {
+      const err = new Error('Модуль не найден');
+      err.status = 404;
+      return next(err);
+    }
+
+    Object.assign(moduleRow, req.body);
+    await persistMongoStore();
+    return res.json({ module: toModuleForLanguage(moduleRow, req.lang) });
+  } catch (err) {
     return next(err);
   }
-
-  Object.assign(moduleRow, req.body);
-  return res.json({ module: toModuleForLanguage(moduleRow, req.lang) });
 });
 
 /**
@@ -150,18 +161,23 @@ router.patch('/:moduleId', requireAuth, allowRoles('admin'), validateBody(module
  *       204:
  *         description: Module deleted
  */
-router.delete('/:moduleId', requireAuth, allowRoles('admin'), (req, res, next) => {
-  const moduleId = Number(req.params.moduleId);
-  const index = db.modules.findIndex((m) => m.id === moduleId);
-  if (index === -1) {
-    const err = new Error('Module not found');
-    err.status = 404;
+router.delete('/:moduleId', requireAuth, allowRoles('admin'), async (req, res, next) => {
+  try {
+    const moduleId = Number(req.params.moduleId);
+    const index = db.modules.findIndex((m) => m.id === moduleId);
+    if (index === -1) {
+      const err = new Error('Модуль не найден');
+      err.status = 404;
+      return next(err);
+    }
+
+    db.modules.splice(index, 1);
+    db.lessons = db.lessons.filter((lesson) => lesson.moduleId !== moduleId);
+    await persistMongoStore();
+    return res.status(204).send();
+  } catch (err) {
     return next(err);
   }
-
-  db.modules.splice(index, 1);
-  db.lessons = db.lessons.filter((lesson) => lesson.moduleId !== moduleId);
-  return res.status(204).send();
 });
 
 /**
@@ -185,7 +201,7 @@ router.delete('/:moduleId', requireAuth, allowRoles('admin'), (req, res, next) =
 router.get('/:moduleId/lessons', requireAuth, (req, res, next) => {
   const moduleRow = getModuleById(req.params.moduleId);
   if (!moduleRow) {
-    const err = new Error('Module not found');
+    const err = new Error('Модуль не найден');
     err.status = 404;
     return next(err);
   }
@@ -202,3 +218,4 @@ router.get('/:moduleId/lessons', requireAuth, (req, res, next) => {
 });
 
 export default router;
+

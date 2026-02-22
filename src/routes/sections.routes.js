@@ -35,7 +35,7 @@ router.get('/', requireAuth, (req, res) => {
 router.get('/:sectionId/lessons', requireAuth, (req, res, next) => {
   const section = getModuleById(req.params.sectionId);
   if (!section) {
-    const err = new Error('Section not found');
+    const err = new Error('Раздел не найден');
     err.status = 404;
     return next(err);
   }
@@ -64,3 +64,4 @@ router.get('/:sectionId/lessons', requireAuth, (req, res, next) => {
 });
 
 export default router;
+

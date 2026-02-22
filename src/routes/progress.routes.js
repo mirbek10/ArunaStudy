@@ -32,13 +32,13 @@ router.get('/lessons/:lessonId', requireAuth, (req, res, next) => {
   const lessonId = Number(req.params.lessonId);
   const lesson = getLessonById(lessonId);
   if (!lesson) {
-    const err = new Error('Lesson not found');
+    const err = new Error('Урок не найден');
     err.status = 404;
     return next(err);
   }
 
   if (!lessonAccessibleForUser(req.user.id, lessonId)) {
-    const err = new Error('No access to this lesson');
+    const err = new Error('Нет доступа к этому уроку');
     err.status = 403;
     return next(err);
   }
@@ -55,3 +55,4 @@ router.get('/lessons/:lessonId', requireAuth, (req, res, next) => {
 });
 
 export default router;
+

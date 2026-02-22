@@ -1,5 +1,6 @@
 ﻿import app from './app.js';
 import { env } from './config/env.js';
+import { initMongoStore } from './services/mongoStore.js';
 
 function startServer(port, maxAttempts = 10) {
   const server = app.listen(port, () => {
@@ -21,4 +22,16 @@ function startServer(port, maxAttempts = 10) {
   });
 }
 
-startServer(env.PORT);
+async function bootstrap() {
+  try {
+    await initMongoStore();
+    startServer(env.PORT);
+  } catch (error) {
+    console.error('Не удалось инициализировать хранилище MongoDB');
+    console.error(error);
+    process.exit(1);
+  }
+}
+
+bootstrap();
+

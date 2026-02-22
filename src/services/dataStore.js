@@ -1,4 +1,4 @@
-﻿import { nextId } from '../utils/id.js';
+﻿import { ensureIdAtLeast, nextId } from '../utils/id.js';
 import { hashPassword } from '../utils/password.js';
 
 function makeQuestion(question, correctAnswer) {
@@ -8,6 +8,10 @@ function makeQuestion(question, correctAnswer) {
     options: [correctAnswer, 'Option 2', 'Option 3', 'Option 4'],
     correctOptionIndex: 0
   };
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 export const db = {
@@ -183,11 +187,101 @@ export const db = {
   practiceSubmissions: []
 };
 
-for (const user of db.users) {
-  if (user.role === 'student') {
-    db.lessonAccessByUserId[String(user.id)] = false;
+export function createStateSnapshot() {
+  return {
+    users: clone(db.users),
+    modules: clone(db.modules),
+    lessons: clone(db.lessons),
+    lessonAccessByUserId: clone(db.lessonAccessByUserId),
+    progressByUserId: clone(db.progressByUserId),
+    practiceSubmissions: clone(db.practiceSubmissions)
+  };
+}
+
+function normalizeLessonAccessMap() {
+  for (const user of db.users) {
+    if (user.role !== 'student') {
+      continue;
+    }
+
+    const key = String(user.id);
+    const value = db.lessonAccessByUserId[key];
+
+    if (typeof value === 'boolean') {
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      db.lessonAccessByUserId[key] = value.length > 0;
+      continue;
+    }
+
+    db.lessonAccessByUserId[key] = false;
   }
 }
+
+export function syncIdCounterWithState() {
+  const candidates = [1000];
+
+  for (const user of db.users) {
+    candidates.push(user.id);
+  }
+
+  for (const moduleRow of db.modules) {
+    candidates.push(moduleRow.id);
+  }
+
+  for (const lesson of db.lessons) {
+    candidates.push(lesson.id);
+
+    for (const question of lesson.test || []) {
+      candidates.push(question.id);
+    }
+  }
+
+  for (const row of db.practiceSubmissions) {
+    candidates.push(row.id);
+  }
+
+  const maxId = Math.max(...candidates.map((value) => Number(value) || 0));
+  ensureIdAtLeast(maxId);
+}
+
+export function applyStateSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') {
+    return;
+  }
+
+  if (Array.isArray(snapshot.users)) {
+    db.users = clone(snapshot.users);
+  }
+
+  if (Array.isArray(snapshot.modules)) {
+    db.modules = clone(snapshot.modules);
+  }
+
+  if (Array.isArray(snapshot.lessons)) {
+    db.lessons = clone(snapshot.lessons);
+  }
+
+  if (snapshot.lessonAccessByUserId && typeof snapshot.lessonAccessByUserId === 'object') {
+    db.lessonAccessByUserId = clone(snapshot.lessonAccessByUserId);
+  }
+
+  if (snapshot.progressByUserId && typeof snapshot.progressByUserId === 'object') {
+    db.progressByUserId = clone(snapshot.progressByUserId);
+  }
+
+  if (Array.isArray(snapshot.practiceSubmissions)) {
+    db.practiceSubmissions = clone(snapshot.practiceSubmissions);
+  }
+
+  normalizeLessonAccessMap();
+  syncIdCounterWithState();
+}
+
+normalizeLessonAccessMap();
+syncIdCounterWithState();
 
 export function publicUser(user) {
   return {

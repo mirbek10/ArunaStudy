@@ -6,6 +6,7 @@ import { validateBody } from '../middleware/validate.js';
 import { practiceReviewSchema, practiceSubmitSchema } from '../utils/schemas.js';
 import { createPracticeSubmission, reviewPracticeSubmission } from '../services/lmsService.js';
 import { toLessonForLanguage } from '../utils/i18n.js';
+import { persistMongoStore } from '../services/mongoStore.js';
 
 const router = Router();
 
@@ -18,7 +19,7 @@ const router = Router();
  *     security:
  *       - bearerAuth: []
  */
-router.post('/submissions', requireAuth, allowRoles('student', 'admin'), validateBody(practiceSubmitSchema), (req, res, next) => {
+router.post('/submissions', requireAuth, allowRoles('student', 'admin'), validateBody(practiceSubmitSchema), async (req, res, next) => {
   try {
     const row = createPracticeSubmission({
       studentId: req.user.id,
@@ -27,6 +28,7 @@ router.post('/submissions', requireAuth, allowRoles('student', 'admin'), validat
       answerText: req.body.answerText
     });
 
+    await persistMongoStore();
     return res.status(201).json({ submission: row });
   } catch (err) {
     return next(err);
@@ -75,7 +77,7 @@ router.patch(
   requireAuth,
   allowRoles('admin'),
   validateBody(practiceReviewSchema),
-  (req, res, next) => {
+  async (req, res, next) => {
     try {
       const row = reviewPracticeSubmission({
         submissionId: Number(req.params.submissionId),
@@ -84,6 +86,7 @@ router.patch(
         feedback: req.body.feedback
       });
 
+      await persistMongoStore();
       return res.json({ submission: row });
     } catch (err) {
       return next(err);

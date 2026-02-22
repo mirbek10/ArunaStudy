@@ -4,6 +4,7 @@ import { hashPassword, comparePassword } from '../utils/password.js';
 import { signToken } from '../utils/jwt.js';
 import { validateBody } from '../middleware/validate.js';
 import { loginSchema, registerSchema } from '../utils/schemas.js';
+import { persistMongoStore } from '../services/mongoStore.js';
 
 const router = Router();
 
@@ -32,26 +33,32 @@ const router = Router();
  *       201:
  *         description: Registered
  *       409:
- *         description: Email already exists
+ *         description: Пользователь с таким email уже существует
  */
-router.post('/register', validateBody(registerSchema), (req, res, next) => {
-  const { name, email, password } = req.body;
+router.post('/register', validateBody(registerSchema), async (req, res, next) => {
+  try {
+    const { name, email, password } = req.body;
 
-  if (findUserByEmail(email)) {
-    const err = new Error('Email already exists');
-    err.status = 409;
+    if (findUserByEmail(email)) {
+      const err = new Error('Пользователь с таким email уже существует');
+      err.status = 409;
+      return next(err);
+    }
+
+    const user = addUser({
+      name,
+      email,
+      passwordHash: hashPassword(password),
+      role: 'student'
+    });
+
+    await persistMongoStore();
+
+    const token = signToken(user);
+    return res.status(201).json({ token, user: publicUser(user) });
+  } catch (err) {
     return next(err);
   }
-
-  const user = addUser({
-    name,
-    email,
-    passwordHash: hashPassword(password),
-    role: 'student'
-  });
-
-  const token = signToken(user);
-  return res.status(201).json({ token, user: publicUser(user) });
 });
 
 /**
@@ -84,7 +91,7 @@ router.post('/login', validateBody(loginSchema), (req, res, next) => {
   const user = findUserByEmail(email);
 
   if (!user || !comparePassword(password, user.passwordHash)) {
-    const err = new Error('Invalid email or password');
+    const err = new Error('Неверный email или пароль');
     err.status = 404;
     return next(err);
   }

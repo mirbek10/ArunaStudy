@@ -24,7 +24,7 @@ export const moduleCreateSchema = z.object({
 
 export const moduleUpdateSchema = moduleCreateSchema.partial().refine(
   (value) => Object.keys(value).length > 0,
-  'At least one field is required'
+  'Нужно передать хотя бы одно поле'
 );
 
 const testQuestionSchema = z
@@ -35,7 +35,7 @@ const testQuestionSchema = z
     correctOptionIndex: z.number().int().min(0)
   })
   .refine((value) => value.correctOptionIndex < value.options.length, {
-    message: 'correctOptionIndex must point to an existing option'
+    message: 'Индекс правильного варианта должен указывать на существующую опцию'
   });
 
 export const lessonCreateSchema = z.object({
@@ -50,7 +50,7 @@ export const lessonCreateSchema = z.object({
 
 export const lessonUpdateSchema = lessonCreateSchema.partial().refine(
   (value) => Object.keys(value).length > 0,
-  'At least one field is required'
+  'Нужно передать хотя бы одно поле'
 );
 
 export const testSubmitSchema = z.object({
@@ -69,7 +69,7 @@ export const practiceSubmitSchema = z
     answerText: z.string().min(3).optional()
   })
   .refine((value) => value.answerUrl || value.answerText, {
-    message: 'answerUrl or answerText is required'
+    message: 'Нужно передать ссылку на ответ или текст ответа'
   });
 
 export const practiceReviewSchema = z.object({
@@ -80,3 +80,4 @@ export const practiceReviewSchema = z.object({
 export const lessonAccessUpdateSchema = z.object({
   hasLessonsAccess: z.boolean()
 });
+
