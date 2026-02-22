@@ -5,7 +5,7 @@ import { initMongoStore } from './services/mongoStore.js';
 let mongoConnected = false;
 let mongoRetryTimer = null;
 
-function startServer(port, maxAttempts = 10) {
+function startServer(port) {
   const server = app.listen(port, '0.0.0.0', () => {
     console.log(`arunastudy server running on http://localhost:${port}`);
     console.log(`Swagger UI: http://localhost:${port}/api/docs`);
@@ -13,11 +13,9 @@ function startServer(port, maxAttempts = 10) {
   });
 
   server.on('error', (error) => {
-    if (error.code === 'EADDRINUSE' && maxAttempts > 0) {
-      const nextPort = port + 1;
-      console.warn(`Port ${port} is busy, trying ${nextPort}...`);
-      startServer(nextPort, maxAttempts - 1);
-      return;
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Порт ${port} уже занят. Освободи порт или задай другой через переменную PORT.`);
+      process.exit(1);
     }
 
     console.error(error);
@@ -35,7 +33,7 @@ async function connectMongoInBackground() {
     }
   } catch (error) {
     mongoConnected = false;
-    console.error('Не удалось подключиться к MongoDB. Сервер продолжит работу в памяти.');
+    console.error('Не удалось подключиться к MongoDB. API будет недоступен до восстановления подключения.');
     console.error(error);
 
     clearTimeout(mongoRetryTimer);

@@ -11,6 +11,7 @@ import progressRoutes from './routes/progress.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 import { attachRequestLanguage } from './middleware/language.js';
+import { requireMongoStore } from './middleware/mongo.js';
 import swaggerSpec from './docs/swagger.js';
 
 const app = express();
@@ -42,15 +43,17 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/docs.json', (_req, res) => {
   res.json(swaggerSpec);
 });
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api/docs', swaggerUi.serve);
+app.get('/api/docs', swaggerUi.setup(swaggerSpec));
+app.get('/api/docs/', swaggerUi.setup(swaggerSpec));
 
-app.use('/api/auth', authRoutes);
-app.use('/api/sections', sectionRoutes);
-app.use('/api/modules', moduleRoutes);
-app.use('/api/lessons', lessonRoutes);
-app.use('/api/practices', practiceRoutes);
-app.use('/api/progress', progressRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/auth', requireMongoStore, authRoutes);
+app.use('/api/sections', requireMongoStore, sectionRoutes);
+app.use('/api/modules', requireMongoStore, moduleRoutes);
+app.use('/api/lessons', requireMongoStore, lessonRoutes);
+app.use('/api/practices', requireMongoStore, practiceRoutes);
+app.use('/api/progress', requireMongoStore, progressRoutes);
+app.use('/api/admin', requireMongoStore, adminRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
