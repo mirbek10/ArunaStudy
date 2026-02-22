@@ -9,6 +9,20 @@ let collections = null;
 let initPromise = null;
 let writeQueue = Promise.resolve();
 
+async function resetMongoConnection() {
+  collections = null;
+  initPromise = null;
+
+  if (client) {
+    try {
+      await client.close();
+    } catch {
+      // no-op
+    }
+    client = null;
+  }
+}
+
 function getCollections() {
   if (!collections) {
     throw new Error('Хранилище MongoDB не инициализировано');
@@ -309,18 +323,7 @@ export async function initMongoStore() {
 
     await persistMongoStore();
   })().catch(async (error) => {
-    collections = null;
-    initPromise = null;
-
-    if (client) {
-      try {
-        await client.close();
-      } catch {
-        // no-op
-      }
-      client = null;
-    }
-
+    await resetMongoConnection();
     throw error;
   });
 
@@ -337,6 +340,11 @@ export async function persistMongoStore() {
     .catch(() => {})
     .then(() => writeStructuredState(state));
 
-  await writeQueue;
+  try {
+    await writeQueue;
+  } catch (error) {
+    await resetMongoConnection();
+    throw error;
+  }
 }
 
