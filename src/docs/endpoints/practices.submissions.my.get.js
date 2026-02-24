@@ -1,9 +1,9 @@
-﻿/**
+/**
  * @swagger
- * /api/practices/submissions:
+ * /api/practices/submissions/my:
  *   get:
- *     summary: Получить отправленные практики (admin)
- *     tags: [Admin-Practices]
+ *     summary: Get current student practice submissions
+ *     tags: [Student-Practices]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -13,10 +13,16 @@
  *         schema:
  *           type: string
  *           enum: [pending, approved, rejected]
- *         description: Фильтр по статусу
+ *         description: Filter by status
+ *       - in: query
+ *         name: lessonId
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Filter by lesson id
  *     responses:
  *       200:
- *         description: Список отправленных практик
+ *         description: Student practice submissions list
  *         content:
  *           application/json:
  *             schema:
@@ -27,8 +33,8 @@
  *                   items:
  *                     $ref: '#/components/schemas/PracticeSubmission'
  *       400:
- *         description: Некорректный статус фильтра
+ *         description: Invalid query params
  *       403:
- *         description: Нет прав
+ *         description: No permissions
  */
 export {};
