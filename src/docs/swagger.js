@@ -111,6 +111,15 @@ const options = {
             }
           }
         },
+        PracticeReviewEntry: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['approved', 'rejected'], example: 'approved' },
+            feedback: { type: 'string', example: 'Отличная работа' },
+            reviewerId: { type: 'integer', nullable: true, example: 1 },
+            reviewedAt: { type: 'string', example: '2026-02-21T10:00:00.000Z' }
+          }
+        },
         PracticeSubmission: {
           type: 'object',
           properties: {
@@ -121,9 +130,16 @@ const options = {
             answerText: { type: 'string', example: 'Решение по практике' },
             status: { type: 'string', enum: ['pending', 'approved', 'rejected'], example: 'pending' },
             feedback: { type: 'string', example: 'Хорошая работа' },
+            reviewHistory: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/PracticeReviewEntry' }
+            },
             reviewerId: { type: 'integer', nullable: true, example: null },
             createdAt: { type: 'string', example: '2026-02-21T10:00:00.000Z' },
-            reviewedAt: { type: 'string', nullable: true, example: null }
+            reviewedAt: { type: 'string', nullable: true, example: null },
+            student: { allOf: [{ $ref: '#/components/schemas/UserPublic' }], nullable: true },
+            reviewer: { allOf: [{ $ref: '#/components/schemas/UserPublic' }], nullable: true },
+            lesson: { allOf: [{ $ref: '#/components/schemas/Lesson' }], nullable: true }
           }
         }
       }

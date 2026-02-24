@@ -135,6 +135,7 @@ function toSnapshotPractices(rows) {
         answerText: row.answerText,
         status: row.status,
         feedback: row.feedback,
+        reviewHistory: Array.isArray(row.reviewHistory) ? row.reviewHistory : [],
         reviewerId: row.reviewerId,
         createdAt: row.createdAt,
         reviewedAt: row.reviewedAt

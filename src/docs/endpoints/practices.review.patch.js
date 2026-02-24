@@ -32,6 +32,13 @@
  *     responses:
  *       200:
  *         description: Практика проверена
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 submission:
+ *                   $ref: '#/components/schemas/PracticeSubmission'
  *       404:
  *         description: Отправка не найдена
  */
