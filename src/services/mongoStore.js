@@ -96,6 +96,7 @@ function toSnapshotLessons(rows) {
         videoUrl: row.videoUrl,
         order: row.order,
         passingScore: row.passingScore,
+        isRequired: typeof row.isRequired === 'boolean' ? row.isRequired : true,
         test: Array.isArray(row.test) ? row.test : []
       };
     })

@@ -23,6 +23,18 @@
  *                 totalLessons:
  *                   type: integer
  *                   example: 14
+ *                 completedRequiredLessons:
+ *                   type: integer
+ *                   example: 8
+ *                 totalRequiredLessons:
+ *                   type: integer
+ *                   example: 14
+ *                 completedOptionalLessons:
+ *                   type: integer
+ *                   example: 3
+ *                 totalOptionalLessons:
+ *                   type: integer
+ *                   example: 5
  *       401:
  *         description: Не авторизован
  */

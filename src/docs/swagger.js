@@ -105,6 +105,7 @@ const options = {
             videoUrl: { type: 'string', example: 'https://www.youtube.com/watch?v=qz0aGYrrlhU' },
             order: { type: 'integer', example: 1 },
             passingScore: { type: 'integer', example: 80 },
+            isRequired: { type: 'boolean', example: true },
             test: {
               type: 'array',
               items: { $ref: '#/components/schemas/LessonQuestion' }

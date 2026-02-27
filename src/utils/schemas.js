@@ -45,6 +45,7 @@ export const lessonCreateSchema = z.object({
   videoUrl: z.string().url().optional(),
   order: z.number().int().min(1),
   passingScore: z.number().int().min(0).max(100).default(80),
+  isRequired: z.boolean().default(true),
   test: z.array(testQuestionSchema).min(1)
 });
 
@@ -52,6 +53,12 @@ export const lessonUpdateSchema = lessonCreateSchema.partial().refine(
   (value) => Object.keys(value).length > 0,
   'Нужно передать хотя бы одно поле'
 );
+
+export const lessonRequiredUpdateSchema = z
+  .object({
+    isRequired: z.boolean()
+  })
+  .strict();
 
 export const testSubmitSchema = z.object({
   answers: z.array(

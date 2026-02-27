@@ -27,6 +27,8 @@
  *                   type: boolean
  *                 passingScore:
  *                   type: integer
+ *                 isRequired:
+ *                   type: boolean
  *                 questions:
  *                   type: array
  *                   items:

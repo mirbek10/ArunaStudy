@@ -33,6 +33,8 @@
  *                 type: integer
  *               passingScore:
  *                 type: integer
+ *               isRequired:
+ *                 type: boolean
  *               test:
  *                 type: array
  *                 items:
