@@ -30,6 +30,27 @@ function completionPercent(completed, total, fallbackTotal = 0) {
   return fallbackTotal > 0 ? 100 : 0;
 }
 
+const PRACTICE_REVIEW_STATUSES = new Set(['approved', 'rejected']);
+
+function normalizePracticeReviewHistory(row) {
+  if (Array.isArray(row.reviewHistory)) {
+    return row.reviewHistory.filter((entry) => entry && typeof entry === 'object');
+  }
+
+  if (!row.reviewedAt) {
+    return [];
+  }
+
+  return [
+    {
+      status: PRACTICE_REVIEW_STATUSES.has(row.status) ? row.status : 'rejected',
+      feedback: row.feedback || '',
+      reviewerId: row.reviewerId ?? null,
+      reviewedAt: row.reviewedAt
+    }
+  ];
+}
+
 export function lessonAccessibleForUser(userId, _lessonId) {
   const user = getUserById(userId);
   if (!user) {
@@ -208,6 +229,7 @@ export function createPracticeSubmission({ studentId, lessonId, answerUrl, answe
     answerText: answerText || '',
     status: 'pending',
     feedback: '',
+    reviewHistory: [],
     reviewerId: null,
     createdAt: new Date().toISOString(),
     reviewedAt: null
@@ -225,10 +247,18 @@ export function reviewPracticeSubmission({ submissionId, reviewerId, status, fee
     throw error;
   }
 
+  const reviewedAt = new Date().toISOString();
+  const review = {
+    status,
+    feedback,
+    reviewerId,
+    reviewedAt
+  };
+  row.reviewHistory = [...normalizePracticeReviewHistory(row), review];
   row.status = status;
   row.feedback = feedback;
   row.reviewerId = reviewerId;
-  row.reviewedAt = new Date().toISOString();
+  row.reviewedAt = reviewedAt;
 
   return row;
 }
