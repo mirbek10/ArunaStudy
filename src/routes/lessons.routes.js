@@ -201,7 +201,7 @@ router.patch('/:lessonId/required', requireAuth, allowRoles('admin'), validateBo
     await persistMongoStore();
 
     return res.json({
-      lesson: toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: true })
+      lesson: toLocalizedLesson(lesson, { includeTest: true, includeCorrectOptionIndex: true })
     });
   } catch (err) {
     return next(err);
