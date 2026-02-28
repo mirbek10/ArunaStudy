@@ -9,6 +9,7 @@ import lessonRoutes from './routes/lessons.routes.js';
 import practiceRoutes from './routes/practices.routes.js';
 import progressRoutes from './routes/progress.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import profileRoutes from './routes/profile.routes.js';
 import { errorHandler, notFound } from './middleware/errors.js';
 import { attachRequestLanguage } from './middleware/language.js';
 import { requireMongoStore } from './middleware/mongo.js';
@@ -53,6 +54,7 @@ app.use('/api/modules', requireMongoStore, moduleRoutes);
 app.use('/api/lessons', requireMongoStore, lessonRoutes);
 app.use('/api/practices', requireMongoStore, practiceRoutes);
 app.use('/api/progress', requireMongoStore, progressRoutes);
+app.use('/api/profile', requireMongoStore, profileRoutes);
 app.use('/api/admin', requireMongoStore, adminRoutes);
 
 app.use(notFound);

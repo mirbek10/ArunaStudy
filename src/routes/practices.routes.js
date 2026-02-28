@@ -5,7 +5,7 @@ import { allowRoles } from '../middleware/roles.js';
 import { validateBody } from '../middleware/validate.js';
 import { practiceReviewSchema, practiceSubmitSchema } from '../utils/schemas.js';
 import { createPracticeSubmission, reviewPracticeSubmission } from '../services/lmsService.js';
-import { toLessonForLanguage } from '../utils/i18n.js';
+import { toLocalizedLesson } from '../utils/i18n.js';
 import { persistMongoStore } from '../services/mongoStore.js';
 
 const router = Router();
@@ -39,7 +39,7 @@ function normalizeReviewHistory(row) {
   ];
 }
 
-function serializePracticeSubmission(row, lang) {
+function serializePracticeSubmission(row) {
   const student = db.users.find((u) => u.id === row.studentId) || null;
   const reviewer = row.reviewerId ? db.users.find((u) => u.id === row.reviewerId) : null;
   const lesson = db.lessons.find((l) => l.id === row.lessonId) || null;
@@ -54,7 +54,7 @@ function serializePracticeSubmission(row, lang) {
     reviewHistory: normalizeReviewHistory(row),
     student: student ? publicUser(student) : null,
     reviewer: reviewer ? publicUser(reviewer) : null,
-    lesson: lesson ? toLessonForLanguage(lesson, lang, { includeTest: false }) : null
+    lesson: lesson ? toLocalizedLesson(lesson, { includeTest: false }) : null
   };
 }
 
@@ -104,7 +104,7 @@ router.post('/submissions', requireAuth, allowRoles('student', 'admin'), validat
     });
 
     await persistMongoStore();
-    return res.status(201).json({ submission: serializePracticeSubmission(row, req.lang) });
+    return res.status(201).json({ submission: serializePracticeSubmission(row) });
   } catch (err) {
     return next(err);
   }
@@ -126,7 +126,7 @@ router.get('/submissions', requireAuth, allowRoles('admin'), (req, res, next) =>
 
     const items = db.practiceSubmissions
       .filter((row) => (status ? row.status === status : true))
-      .map((row) => serializePracticeSubmission(row, req.lang))
+      .map((row) => serializePracticeSubmission(row))
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
     return res.json({ items });
@@ -154,7 +154,7 @@ router.get('/submissions/my', requireAuth, allowRoles('student'), (req, res, nex
       .filter((row) => row.studentId === req.user.id)
       .filter((row) => (status ? row.status === status : true))
       .filter((row) => (lessonId ? row.lessonId === lessonId : true))
-      .map((row) => serializePracticeSubmission(row, req.lang))
+      .map((row) => serializePracticeSubmission(row))
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
     return res.json({ items });
@@ -194,7 +194,7 @@ router.get('/submissions/:submissionId', requireAuth, allowRoles('student', 'adm
       throw err;
     }
 
-    return res.json({ submission: serializePracticeSubmission(row, req.lang) });
+    return res.json({ submission: serializePracticeSubmission(row) });
   } catch (err) {
     return next(err);
   }
@@ -224,7 +224,7 @@ router.patch(
       });
 
       await persistMongoStore();
-      return res.json({ submission: serializePracticeSubmission(row, req.lang) });
+      return res.json({ submission: serializePracticeSubmission(row) });
     } catch (err) {
       return next(err);
     }

@@ -3,6 +3,7 @@ import { addUser, findUserByEmail, publicUser } from '../services/dataStore.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { signToken } from '../utils/jwt.js';
 import { validateBody } from '../middleware/validate.js';
+import { requireAuth } from '../middleware/auth.js';
 import { loginSchema, registerSchema } from '../utils/schemas.js';
 import { persistMongoStore } from '../services/mongoStore.js';
 
@@ -92,7 +93,7 @@ router.post('/login', validateBody(loginSchema), (req, res, next) => {
 
   if (!user || !comparePassword(password, user.passwordHash)) {
     const err = new Error('Неверный email или пароль');
-    err.status = 404;
+    err.status = 401;
     return next(err);
   }
 
@@ -100,5 +101,38 @@ router.post('/login', validateBody(loginSchema), (req, res, next) => {
   return res.json({ token, user: publicUser(user) });
 });
 
-export default router;
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Получить информацию о текущем пользователе
+ *     tags: [Student-Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Не авторизован
+ *       500:
+ *         description: Внутренняя ошибка сервера
+ */
+router.get('/me', requireAuth, (req, res, next) => {
+  try {
+    if (!req.user) {
+      const err = new Error('Пользователь не найден');
+      err.status = 401;
+      return next(err);
+    }
 
+    return res.status(200).json(publicUser(req.user));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+export default router;

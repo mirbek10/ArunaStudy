@@ -16,6 +16,14 @@ export const loginSchema = z.object({
   password: z.string().min(6)
 });
 
+export const profileUpdateSchema = z
+  .object({
+    name: z.string().min(2).optional(),
+    email: z.string().email().optional(),
+    password: z.string().min(6).optional()
+  })
+  .refine((value) => Object.keys(value).length > 0, 'Нужно передать хотя бы одно поле');
+
 export const moduleCreateSchema = z.object({
   title: localizedTextSchema,
   description: localizedTextSchema,

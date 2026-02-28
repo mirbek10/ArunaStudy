@@ -6,7 +6,7 @@ import { validateBody } from '../middleware/validate.js';
 import { moduleCreateSchema, moduleUpdateSchema } from '../utils/schemas.js';
 import { nextId } from '../utils/id.js';
 import { lessonAccessibleForUser } from '../services/lmsService.js';
-import { toLessonForLanguage, toModuleForLanguage } from '../utils/i18n.js';
+import { toLocalizedLesson, toLocalizedModule } from '../utils/i18n.js';
 import { persistMongoStore } from '../services/mongoStore.js';
 
 const router = Router();
@@ -20,8 +20,8 @@ function visibleLessonsForUser(user, lessons) {
   return lessons.filter((lesson) => lessonAccessibleForUser(user.id, lesson.id));
 }
 
-function serializeLesson(lesson, lang, { includeTest = false, includeCorrectOptionIndex = false } = {}) {
-  const normalized = toLessonForLanguage(lesson, lang, { includeTest, includeCorrectOptionIndex });
+function serializeLesson(lesson, { includeTest = false, includeCorrectOptionIndex = false } = {}) {
+  const normalized = toLocalizedLesson(lesson, { includeTest, includeCorrectOptionIndex });
   return {
     ...normalized,
     videoUrl: normalized.videoUrl || DEFAULT_VIDEO_URL
@@ -48,11 +48,10 @@ function serializeLesson(lesson, lang, { includeTest = false, includeCorrectOpti
  */
 router.get('/', requireAuth, (req, res) => {
   const withLessons = req.query.withLessons === '1';
-  const lang = req.lang;
   const modules = [...db.modules]
     .sort((a, b) => a.order - b.order)
     .map((module) => {
-      const localizedModule = toModuleForLanguage(module, lang);
+      const localizedModule = toLocalizedModule(module);
       if (!withLessons) return localizedModule;
 
       const lessons = db.lessons
@@ -61,7 +60,7 @@ router.get('/', requireAuth, (req, res) => {
 
       return {
         ...localizedModule,
-        lessons: visibleLessonsForUser(req.user, lessons).map((lesson) => serializeLesson(lesson, lang))
+        lessons: visibleLessonsForUser(req.user, lessons).map((lesson) => serializeLesson(lesson))
       };
     });
 
@@ -100,7 +99,7 @@ router.post('/', requireAuth, allowRoles('admin'), validateBody(moduleCreateSche
     const moduleRow = { id: nextId(), ...req.body };
     db.modules.push(moduleRow);
     await persistMongoStore();
-    res.status(201).json({ module: toModuleForLanguage(moduleRow, req.lang) });
+    res.status(201).json({ module: toLocalizedModule(moduleRow) });
   } catch (err) {
     return next(err);
   }
@@ -137,7 +136,7 @@ router.patch('/:moduleId', requireAuth, allowRoles('admin'), validateBody(module
 
     Object.assign(moduleRow, req.body);
     await persistMongoStore();
-    return res.json({ module: toModuleForLanguage(moduleRow, req.lang) });
+    return res.json({ module: toLocalizedModule(moduleRow) });
   } catch (err) {
     return next(err);
   }
@@ -212,7 +211,7 @@ router.get('/:moduleId/lessons', requireAuth, (req, res, next) => {
 
   return res.json({
     lessons: visibleLessonsForUser(req.user, lessons).map((lesson) =>
-      serializeLesson(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: req.user.role === 'admin' })
+      serializeLesson(lesson, { includeTest: true, includeCorrectOptionIndex: req.user.role === 'admin' })
     )
   });
 });

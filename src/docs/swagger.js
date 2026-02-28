@@ -20,6 +20,7 @@ const options = {
       { name: 'Student-Practices', description: 'Запросы студента по практикам' },
       { name: 'Admin-Practices', description: 'Запросы админа по практикам' },
       { name: 'Student-Progress', description: 'Запросы студента по прогрессу' },
+      { name: 'Student-Profile', description: 'Запросы пользователя по своему профилю' },
       { name: 'Admin-Dashboard', description: 'Метрики админ-панели' },
       { name: 'Admin-Users', description: 'Запросы админа по пользователям и доступам к урокам' }
     ],
@@ -35,7 +36,7 @@ const options = {
         ErrorResponse: {
           type: 'object',
           properties: {
-            message: { type: 'string', example: 'Ошибка запроса' }
+            message: { $ref: '#/components/schemas/LocalizedText' }
           }
         },
         UserPublic: {
@@ -66,8 +67,8 @@ const options = {
           type: 'object',
           properties: {
             id: { type: 'integer', example: 11 },
-            title: { type: 'string', example: 'HTML/CSS' },
-            description: { type: 'string', example: 'Semantic HTML, CSS layouts' },
+            title: { $ref: '#/components/schemas/LocalizedText' },
+            description: { $ref: '#/components/schemas/LocalizedText' },
             order: { type: 'integer', example: 1 }
           }
         },
@@ -75,8 +76,8 @@ const options = {
           type: 'object',
           properties: {
             id: { type: 'integer', example: 11 },
-            title: { type: 'string', example: 'HTML/CSS' },
-            description: { type: 'string', example: 'Semantic HTML, CSS layouts' },
+            title: { $ref: '#/components/schemas/LocalizedText' },
+            description: { $ref: '#/components/schemas/LocalizedText' },
             order: { type: 'integer', example: 1 },
             lessonsCount: { type: 'integer', example: 2 }
           }
@@ -85,12 +86,17 @@ const options = {
           type: 'object',
           properties: {
             id: { type: 'integer', example: 501 },
-            question: { type: 'string', example: 'Main HTML heading tag?' },
+            question: { $ref: '#/components/schemas/LocalizedText' },
             options: {
               type: 'array',
-              items: { type: 'string' },
+              items: { $ref: '#/components/schemas/LocalizedText' },
               minItems: 4,
-              example: ['h1', 'h2', 'title', 'head']
+              example: [
+                { ru: 'h1', ky: 'h1' },
+                { ru: 'h2', ky: 'h2' },
+                { ru: 'title', ky: 'title' },
+                { ru: 'head', ky: 'head' }
+              ]
             },
             correctOptionIndex: { type: 'integer', example: 0 }
           }
@@ -100,8 +106,8 @@ const options = {
           properties: {
             id: { type: 'integer', example: 101 },
             moduleId: { type: 'integer', example: 11 },
-            title: { type: 'string', example: 'HTML Structure' },
-            content: { type: 'string', example: 'Build semantic page structure.' },
+            title: { $ref: '#/components/schemas/LocalizedText' },
+            content: { $ref: '#/components/schemas/LocalizedText' },
             videoUrl: { type: 'string', example: 'https://www.youtube.com/watch?v=qz0aGYrrlhU' },
             order: { type: 'integer', example: 1 },
             passingScore: { type: 'integer', example: 80 },
