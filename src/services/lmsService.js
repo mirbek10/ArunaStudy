@@ -2,6 +2,34 @@
 import { nextId } from '../utils/id.js';
 import { toLocalizedQuestion, toLocalizedText } from '../utils/i18n.js';
 
+function lessonPassingScore(lesson) {
+  return Number(lesson?.passingScore || 80);
+}
+
+function lessonIsRequired(lesson) {
+  return typeof lesson?.isRequired === 'boolean' ? lesson.isRequired : true;
+}
+
+function lessonCompletedByProgress(lesson, progressRow) {
+  if (!progressRow || typeof progressRow !== 'object') {
+    return false;
+  }
+
+  if (typeof progressRow.completed === 'boolean') {
+    return progressRow.completed || Number(progressRow.testScore || 0) >= lessonPassingScore(lesson);
+  }
+
+  return Number(progressRow.testScore || 0) >= lessonPassingScore(lesson);
+}
+
+function completionPercent(completed, total, fallbackTotal = 0) {
+  if (total > 0) {
+    return Math.round((completed / total) * 100);
+  }
+
+  return fallbackTotal > 0 ? 100 : 0;
+}
+
 const PRACTICE_REVIEW_STATUSES = new Set(['approved', 'rejected']);
 
 function normalizePracticeReviewHistory(row) {
@@ -43,13 +71,17 @@ export function lessonUnlockedForUser(userId, lessonId) {
 
   const orderedLessons = getOrderedLessons();
   const idx = orderedLessons.findIndex((l) => l.id === Number(lessonId));
+  if (idx === -1) return false;
   if (idx <= 0) return true;
 
   const previousLesson = orderedLessons[idx - 1];
+  if (!lessonIsRequired(previousLesson)) {
+    return true;
+  }
+
   const progress = userProgressMap(userId);
   const previousResult = progress[String(previousLesson.id)];
-  const required = previousLesson.passingScore || 80;
-  return Number(previousResult?.testScore || 0) >= required;
+  return lessonCompletedByProgress(previousLesson, previousResult);
 }
 
 export function submitLessonTest({ userId, lessonId, answers }) {
@@ -67,7 +99,7 @@ export function submitLessonTest({ userId, lessonId, answers }) {
   }
 
   if (!lessonUnlockedForUser(userId, lesson.id)) {
-    const error = new Error('Урок заблокирован. Сначала завершите предыдущий урок минимум на 80%.');
+    const error = new Error('Урок заблокирован. Сначала завершите предыдущий обязательный урок.');
     error.status = 423;
     throw error;
   }
@@ -81,7 +113,7 @@ export function submitLessonTest({ userId, lessonId, answers }) {
   }, 0);
 
   const score = total ? Math.round((correct / total) * 100) : 0;
-  const required = lesson.passingScore || 80;
+  const required = lessonPassingScore(lesson);
 
   const progress = userProgressMap(userId);
   const previous = progress[String(lesson.id)] || { attempts: 0, testScore: 0, completed: false };
@@ -111,37 +143,65 @@ export function buildProgressOverview(userId) {
   const user = getUserById(userId);
   const hasAccess = user?.role === 'admin' ? true : hasUserLessonAccess(userId);
   const lessons = hasAccess ? getOrderedLessons() : [];
+  const requiredLessons = lessons.filter((lesson) => lessonIsRequired(lesson));
+  const optionalLessons = lessons.filter((lesson) => !lessonIsRequired(lesson));
 
-  const completedLessons = lessons.filter((lesson) => {
+  const completedRequiredLessons = requiredLessons.filter((lesson) => {
     const row = progress[String(lesson.id)];
-    return Number(row?.testScore || 0) >= (lesson.passingScore || 80);
+    return lessonCompletedByProgress(lesson, row);
   }).length;
 
-  const totalLessons = lessons.length;
-  const overallPercent = totalLessons ? Math.round((completedLessons / totalLessons) * 100) : 0;
+  const completedOptionalLessons = optionalLessons.filter((lesson) => {
+    const row = progress[String(lesson.id)];
+    return lessonCompletedByProgress(lesson, row);
+  }).length;
 
-  const moduleProgress = db.modules
+  const totalRequiredLessons = requiredLessons.length;
+  const totalOptionalLessons = optionalLessons.length;
+  const overallPercent = completionPercent(completedRequiredLessons, totalRequiredLessons, lessons.length);
+
+  const moduleProgress = [...db.modules]
     .sort((a, b) => a.order - b.order)
     .map((module) => {
       const moduleLessons = hasAccess ? db.lessons.filter((l) => l.moduleId === module.id) : [];
-      const done = moduleLessons.filter((lesson) => {
+      const moduleRequiredLessons = moduleLessons.filter((lesson) => lessonIsRequired(lesson));
+      const moduleOptionalLessons = moduleLessons.filter((lesson) => !lessonIsRequired(lesson));
+
+      const completedModuleRequiredLessons = moduleRequiredLessons.filter((lesson) => {
         const row = progress[String(lesson.id)];
-        return Number(row?.testScore || 0) >= (lesson.passingScore || 80);
+        return lessonCompletedByProgress(lesson, row);
       }).length;
+
+      const completedModuleOptionalLessons = moduleOptionalLessons.filter((lesson) => {
+        const row = progress[String(lesson.id)];
+        return lessonCompletedByProgress(lesson, row);
+      }).length;
+
+      const totalModuleRequiredLessons = moduleRequiredLessons.length;
+      const percent = completionPercent(completedModuleRequiredLessons, totalModuleRequiredLessons, moduleLessons.length);
 
       return {
         moduleId: module.id,
         title: toLocalizedText(module.title),
-        completedLessons: done,
-        totalLessons: moduleLessons.length,
-        percent: moduleLessons.length ? Math.round((done / moduleLessons.length) * 100) : 0
+        completedLessons: completedModuleRequiredLessons,
+        totalLessons: totalModuleRequiredLessons,
+        percent,
+        completed: totalModuleRequiredLessons === 0 || completedModuleRequiredLessons === totalModuleRequiredLessons,
+        completedRequiredLessons: completedModuleRequiredLessons,
+        totalRequiredLessons: totalModuleRequiredLessons,
+        completedOptionalLessons: completedModuleOptionalLessons,
+        totalOptionalLessons: moduleOptionalLessons.length
       };
     });
 
   return {
     overallPercent,
-    completedLessons,
-    totalLessons,
+    completedLessons: completedRequiredLessons,
+    totalLessons: totalRequiredLessons,
+    completedRequiredLessons,
+    totalRequiredLessons,
+    completedOptionalLessons,
+    totalOptionalLessons,
     lessonProgress: progress,
     moduleProgress
   };

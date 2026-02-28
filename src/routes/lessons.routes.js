@@ -3,7 +3,7 @@ import { db, getLessonById, getModuleById } from '../services/dataStore.js';
 import { requireAuth } from '../middleware/auth.js';
 import { allowRoles } from '../middleware/roles.js';
 import { validateBody } from '../middleware/validate.js';
-import { lessonCreateSchema, lessonUpdateSchema, testSubmitSchema } from '../utils/schemas.js';
+import { lessonCreateSchema, lessonRequiredUpdateSchema, lessonUpdateSchema, testSubmitSchema } from '../utils/schemas.js';
 import { nextId } from '../utils/id.js';
 import { lessonAccessibleForUser, lessonUnlockedForUser, submitLessonTest } from '../services/lmsService.js';
 import { toLocalizedLesson, toLocalizedQuestion } from '../utils/i18n.js';
@@ -49,6 +49,7 @@ router.get('/:lessonId/test', requireAuth, (req, res, next) => {
     lessonId: lesson.id,
     unlocked,
     passingScore: lesson.passingScore || 80,
+    isRequired: typeof lesson.isRequired === 'boolean' ? lesson.isRequired : true,
     questions: lesson.test.map((q) => {
       const localizedQuestion = toLocalizedQuestion(q, { includeCorrectOptionIndex: false });
       return {
@@ -120,6 +121,7 @@ router.post('/', requireAuth, allowRoles('admin'), validateBody(lessonCreateSche
       videoUrl: req.body.videoUrl || DEFAULT_VIDEO_URL,
       order: req.body.order,
       passingScore: req.body.passingScore,
+      isRequired: req.body.isRequired,
       test: req.body.test.map((q) => ({ ...q, id: nextId() }))
     };
 
@@ -171,6 +173,35 @@ router.patch('/:lessonId', requireAuth, allowRoles('admin'), validateBody(lesson
 
     return res.json({
       lesson: toLocalizedLesson(lesson, { includeTest: true, includeCorrectOptionIndex: true })
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/lessons/{lessonId}/required:
+ *   patch:
+ *     summary: Обновить обязательность урока (admin)
+ *     tags: [Admin-Lessons]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.patch('/:lessonId/required', requireAuth, allowRoles('admin'), validateBody(lessonRequiredUpdateSchema), async (req, res, next) => {
+  try {
+    const lesson = getLessonById(req.params.lessonId);
+    if (!lesson) {
+      const err = new Error('Урок не найден');
+      err.status = 404;
+      return next(err);
+    }
+
+    lesson.isRequired = req.body.isRequired;
+    await persistMongoStore();
+
+    return res.json({
+      lesson: toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: true })
     });
   } catch (err) {
     return next(err);

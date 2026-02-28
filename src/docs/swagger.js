@@ -12,6 +12,7 @@ const options = {
     tags: [
       { name: 'Health', description: 'Проверка состояния API' },
       { name: 'Public-Auth', description: 'Публичная аутентификация' },
+      { name: 'Student-Auth', description: 'Запросы текущего пользователя по авторизации' },
       { name: 'Student-Sections', description: 'Запросы студента по разделам' },
       { name: 'Student-Modules', description: 'Запросы студента по модулям' },
       { name: 'Admin-Modules', description: 'Запросы админа по модулям' },
@@ -111,6 +112,7 @@ const options = {
             videoUrl: { type: 'string', example: 'https://www.youtube.com/watch?v=qz0aGYrrlhU' },
             order: { type: 'integer', example: 1 },
             passingScore: { type: 'integer', example: 80 },
+            isRequired: { type: 'boolean', example: true },
             test: {
               type: 'array',
               items: { $ref: '#/components/schemas/LessonQuestion' }

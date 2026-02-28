@@ -14,6 +14,13 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function normalizeLessonRow(lesson) {
+  return {
+    ...lesson,
+    isRequired: typeof lesson?.isRequired === 'boolean' ? lesson.isRequired : true
+  };
+}
+
 export const db = {
   users: [
     {
@@ -187,6 +194,8 @@ export const db = {
   practiceSubmissions: []
 };
 
+db.lessons = db.lessons.map((lesson) => normalizeLessonRow(lesson));
+
 export function createStateSnapshot() {
   return {
     users: clone(db.users),
@@ -261,7 +270,7 @@ export function applyStateSnapshot(snapshot) {
   }
 
   if (Array.isArray(snapshot.lessons)) {
-    db.lessons = clone(snapshot.lessons);
+    db.lessons = clone(snapshot.lessons).map((lesson) => normalizeLessonRow(lesson));
   }
 
   if (snapshot.lessonAccessByUserId && typeof snapshot.lessonAccessByUserId === 'object') {

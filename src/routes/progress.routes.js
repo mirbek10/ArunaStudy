@@ -45,11 +45,14 @@ router.get('/lessons/:lessonId', requireAuth, (req, res, next) => {
 
   const progress = userProgressMap(req.user.id)[String(lessonId)] || null;
   const unlocked = lessonUnlockedForUser(req.user.id, lessonId);
+  const passingScore = lesson.passingScore || 80;
 
   return res.json({
     lessonId,
     unlocked,
-    required: lesson.passingScore || 80,
+    required: passingScore,
+    passingScore,
+    isRequired: typeof lesson.isRequired === 'boolean' ? lesson.isRequired : true,
     progress
   });
 });

@@ -31,6 +31,9 @@
  *               passingScore:
  *                 type: integer
  *                 example: 80
+ *               isRequired:
+ *                 type: boolean
+ *                 example: true
  *               test:
  *                 type: array
  *                 items:

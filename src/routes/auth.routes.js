@@ -115,7 +115,7 @@ router.post('/login', validateBody(loginSchema), (req, res, next) => {
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/User'
+ *               $ref: '#/components/schemas/UserPublic'
  *       401:
  *         description: Не авторизован
  *       500:
