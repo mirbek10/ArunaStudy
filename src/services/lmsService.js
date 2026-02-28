@@ -1,6 +1,6 @@
 ﻿import { db, getLessonById, getModuleById, getOrderedLessons, getUserById, hasUserLessonAccess, userProgressMap } from './dataStore.js';
 import { nextId } from '../utils/id.js';
-import { localizedTextForLanguage, toLocalizedQuestion } from '../utils/i18n.js';
+import { toLocalizedQuestion, toLocalizedText } from '../utils/i18n.js';
 
 function lessonPassingScore(lesson) {
   return Number(lesson?.passingScore || 80);
@@ -138,7 +138,7 @@ export function submitLessonTest({ userId, lessonId, answers }) {
   };
 }
 
-export function buildProgressOverview(userId, lang = 'ru') {
+export function buildProgressOverview(userId) {
   const progress = userProgressMap(userId);
   const user = getUserById(userId);
   const hasAccess = user?.role === 'admin' ? true : hasUserLessonAccess(userId);
@@ -182,7 +182,7 @@ export function buildProgressOverview(userId, lang = 'ru') {
 
       return {
         moduleId: module.id,
-        title: localizedTextForLanguage(module.title, lang),
+        title: toLocalizedText(module.title),
         completedLessons: completedModuleRequiredLessons,
         totalLessons: totalModuleRequiredLessons,
         percent,

@@ -6,7 +6,7 @@ import { validateBody } from '../middleware/validate.js';
 import { lessonCreateSchema, lessonRequiredUpdateSchema, lessonUpdateSchema, testSubmitSchema } from '../utils/schemas.js';
 import { nextId } from '../utils/id.js';
 import { lessonAccessibleForUser, lessonUnlockedForUser, submitLessonTest } from '../services/lmsService.js';
-import { toLessonForLanguage, toQuestionForLanguage } from '../utils/i18n.js';
+import { toLocalizedLesson, toLocalizedQuestion } from '../utils/i18n.js';
 import { persistMongoStore } from '../services/mongoStore.js';
 
 const router = Router();
@@ -51,7 +51,7 @@ router.get('/:lessonId/test', requireAuth, (req, res, next) => {
     passingScore: lesson.passingScore || 80,
     isRequired: typeof lesson.isRequired === 'boolean' ? lesson.isRequired : true,
     questions: lesson.test.map((q) => {
-      const localizedQuestion = toQuestionForLanguage(q, req.lang, { includeCorrectOptionIndex: false });
+      const localizedQuestion = toLocalizedQuestion(q, { includeCorrectOptionIndex: false });
       return {
         id: localizedQuestion.id,
         question: localizedQuestion.question,
@@ -84,7 +84,7 @@ router.get('/:lessonId', requireAuth, (req, res, next) => {
 
   const unlocked = lessonUnlockedForUser(req.user.id, lesson.id);
   const includeCorrectOptionIndex = req.user.role === 'admin';
-  const localizedLesson = toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex });
+  const localizedLesson = toLocalizedLesson(lesson, { includeTest: true, includeCorrectOptionIndex });
 
   return res.json({
     lesson: {
@@ -129,7 +129,7 @@ router.post('/', requireAuth, allowRoles('admin'), validateBody(lessonCreateSche
     await persistMongoStore();
 
     return res.status(201).json({
-      lesson: toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: true })
+      lesson: toLocalizedLesson(lesson, { includeTest: true, includeCorrectOptionIndex: true })
     });
   } catch (err) {
     return next(err);
@@ -172,7 +172,7 @@ router.patch('/:lessonId', requireAuth, allowRoles('admin'), validateBody(lesson
     await persistMongoStore();
 
     return res.json({
-      lesson: toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: true })
+      lesson: toLocalizedLesson(lesson, { includeTest: true, includeCorrectOptionIndex: true })
     });
   } catch (err) {
     return next(err);

@@ -2,7 +2,7 @@
 import { db, getModuleById } from '../services/dataStore.js';
 import { requireAuth } from '../middleware/auth.js';
 import { lessonAccessibleForUser } from '../services/lmsService.js';
-import { toLessonForLanguage, toModuleForLanguage } from '../utils/i18n.js';
+import { toLocalizedLesson, toLocalizedModule } from '../utils/i18n.js';
 
 const router = Router();
 const DEFAULT_VIDEO_URL = 'https://www.youtube.com/watch?v=qz0aGYrrlhU';
@@ -19,7 +19,7 @@ router.get('/', requireAuth, (req, res) => {
   const sections = [...db.modules]
     .sort((a, b) => a.order - b.order)
     .map((module) => {
-      const localized = toModuleForLanguage(module, req.lang);
+      const localized = toLocalizedModule(module);
       return {
         id: localized.id,
         title: localized.title,
@@ -44,7 +44,7 @@ router.get('/:sectionId/lessons', requireAuth, (req, res, next) => {
     .filter((lesson) => lesson.moduleId === section.id)
     .sort((a, b) => a.order - b.order);
 
-  const localizedSection = toModuleForLanguage(section, req.lang);
+  const localizedSection = toLocalizedModule(section);
 
   return res.json({
     section: {
@@ -54,7 +54,7 @@ router.get('/:sectionId/lessons', requireAuth, (req, res, next) => {
       order: localizedSection.order
     },
     lessons: visibleLessonsForUser(req.user, lessons).map((lesson) => {
-      const localizedLesson = toLessonForLanguage(lesson, req.lang, { includeTest: true, includeCorrectOptionIndex: false });
+      const localizedLesson = toLocalizedLesson(lesson, { includeTest: true, includeCorrectOptionIndex: false });
       return {
         ...localizedLesson,
         videoUrl: localizedLesson.videoUrl || DEFAULT_VIDEO_URL

@@ -28,4 +28,3 @@ export function requireAuth(req, _res, next) {
     next(err);
   }
 }
-
