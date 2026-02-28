@@ -101,38 +101,4 @@ router.post('/login', validateBody(loginSchema), (req, res, next) => {
   return res.json({ token, user: publicUser(user) });
 });
 
-/**
- * @swagger
- * /api/auth/me:
- *   get:
- *     summary: Получить информацию о текущем пользователе
- *     tags: [Student-Auth]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: OK
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/UserPublic'
- *       401:
- *         description: Не авторизован
- *       500:
- *         description: Внутренняя ошибка сервера
- */
-router.get('/me', requireAuth, (req, res, next) => {
-  try {
-    if (!req.user) {
-      const err = new Error('Пользователь не найден');
-      err.status = 401;
-      return next(err);
-    }
-
-    return res.status(200).json(publicUser(req.user));
-  } catch (err) {
-    return next(err);
-  }
-});
-
 export default router;
