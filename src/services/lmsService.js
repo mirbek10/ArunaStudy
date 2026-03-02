@@ -83,8 +83,8 @@ export function lessonUnlockedForUser(userId, lessonId) {
   const previousResult = progress[String(previousLesson.id)];
   return lessonCompletedByProgress(previousLesson, previousResult);
 }
-
 export function submitLessonTest({ userId, lessonId, answers }) {
+  // 1. Поиск урока
   const lesson = getLessonById(lessonId);
   if (!lesson) {
     const error = new Error('Урок не найден');
@@ -92,6 +92,7 @@ export function submitLessonTest({ userId, lessonId, answers }) {
     throw error;
   }
 
+  // 2. Проверки доступа
   if (!lessonAccessibleForUser(userId, lesson.id)) {
     const error = new Error('Нет доступа к этому уроку');
     error.status = 403;
@@ -104,19 +105,33 @@ export function submitLessonTest({ userId, lessonId, answers }) {
     throw error;
   }
 
+  // 3. Подсчет результатов
   const map = new Map((answers || []).map((a) => [Number(a.questionId), Number(a.selectedOptionIndex)]));
-  const total = lesson.test.length;
-  const correct = lesson.test.reduce((sum, question) => {
+
+  const totalQuestions = lesson.test.length; // Общее кол-во вопросов в уроке
+  let correctCount = 0;
+
+  // Проходим по всем вопросам теста из базы данных
+  lesson.test.forEach((question) => {
     const normalizedQuestion = toLocalizedQuestion(question, { includeCorrectOptionIndex: true });
     const submittedOptionIndex = map.get(question.id);
-    return sum + (submittedOptionIndex === Number(normalizedQuestion.correctOptionIndex) ? 1 : 0);
-  }, 0);
 
-  const score = total ? Math.round((correct / total) * 100) : 0;
+    // Сверяем индекс ответа пользователя с правильным индексом
+    if (submittedOptionIndex !== undefined && submittedOptionIndex === Number(normalizedQuestion.correctOptionIndex)) {
+      correctCount++;
+    }
+  });
+
+  // Вычисляем статистику
+  const incorrectCount = totalQuestions - correctCount;
+  const score = totalQuestions ? Math.round((correctCount / totalQuestions) * 100) : 0;
   const required = lessonPassingScore(lesson);
 
+  // 4. Обновление прогресса
   const progress = userProgressMap(userId);
   const previous = progress[String(lesson.id)] || { attempts: 0, testScore: 0, completed: false };
+
+  // Сохраняем лучший результат (Best Score)
   const bestScore = Math.max(previous.testScore || 0, score);
 
   progress[String(lesson.id)] = {
@@ -124,20 +139,25 @@ export function submitLessonTest({ userId, lessonId, answers }) {
     testScore: bestScore,
     lastScore: score,
     attempts: Number(previous.attempts || 0) + 1,
-    completed: bestScore >= required,
+    completed: bestScore >= required, // Урок считается пройденным, если лучший результат выше порога
     updatedAt: new Date().toISOString()
   };
 
+  // 5. Возврат расширенного ответа
   return {
     lessonId: lesson.id,
-    score,
-    bestScore,
-    required,
-    passed: score >= required,
-    passedByBest: bestScore >= required
+    stats: {
+      total: totalQuestions,      // Всего вопросов в тесте
+      correct: correctCount,      // Правильных ответов
+      incorrect: incorrectCount   // Неправильных ответов (включая пропущенные)
+    },
+    score,                        // Текущий результат в %
+    bestScore,                    // Лучший результат за все попытки в %
+    required,                     // Порог прохождения в %
+    passed: score >= required,    // Пройден ли тест в этой попытке
+    passedByBest: bestScore >= required // Считается ли урок завершенным (по лучшей попытке)
   };
 }
-
 export function buildProgressOverview(userId) {
   const progress = userProgressMap(userId);
   const user = getUserById(userId);
